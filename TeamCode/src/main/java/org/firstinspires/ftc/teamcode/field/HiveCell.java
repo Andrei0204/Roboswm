@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.field;
 
 /** The two CELLs of an alliance's HIVE seesaw. Only the CELL that is currently up is a legal target (G417). */
 public enum HiveCell {

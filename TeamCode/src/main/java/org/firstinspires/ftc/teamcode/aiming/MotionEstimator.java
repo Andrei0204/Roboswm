@@ -1,4 +1,6 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.aiming;
+
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 
 /**
  * Smooths Pedro's field velocity and derives field acceleration. Pedro v3 has no acceleration

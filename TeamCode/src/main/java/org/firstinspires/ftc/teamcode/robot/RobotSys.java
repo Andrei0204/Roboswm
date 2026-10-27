@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.robot;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.follower.ManualDrive;
@@ -8,17 +8,18 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
-import org.firstinspires.ftc.teamcode.shooter.Alliance;
-import org.firstinspires.ftc.teamcode.shooter.BallType;
-import org.firstinspires.ftc.teamcode.shooter.BioBuzzField;
-import org.firstinspires.ftc.teamcode.shooter.Feeder;
-import org.firstinspires.ftc.teamcode.shooter.Gate;
-import org.firstinspires.ftc.teamcode.shooter.HiveCell;
-import org.firstinspires.ftc.teamcode.shooter.Intake;
-import org.firstinspires.ftc.teamcode.shooter.PoseStorage;
-import org.firstinspires.ftc.teamcode.shooter.ShootOnTheMove;
-import org.firstinspires.ftc.teamcode.shooter.ShotSolution;
-import org.firstinspires.ftc.teamcode.shooter.ShotSolver;
+import org.firstinspires.ftc.teamcode.aiming.BallType;
+import org.firstinspires.ftc.teamcode.aiming.ShootOnTheMove;
+import org.firstinspires.ftc.teamcode.aiming.ShotSolution;
+import org.firstinspires.ftc.teamcode.aiming.ShotSolver;
+import org.firstinspires.ftc.teamcode.field.Alliance;
+import org.firstinspires.ftc.teamcode.field.BioBuzzField;
+import org.firstinspires.ftc.teamcode.field.HiveCell;
+import org.firstinspires.ftc.teamcode.field.PoseStorage;
+import org.firstinspires.ftc.teamcode.subsystems.Feeder;
+import org.firstinspires.ftc.teamcode.subsystems.Gate;
+import org.firstinspires.ftc.teamcode.subsystems.Intake;
+import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
 
 /**
  * The whole robot in one place: Pedro drive/localization, the shoot-on-the-move aiming
@@ -29,7 +30,8 @@ import org.firstinspires.ftc.teamcode.shooter.ShotSolver;
  *
  * <p>Nothing moves in INIT except turret homing, and only when the home button asks for it: no
  * other servo or motor is commanded until the first {@link #update} after START. INIT loop:
- * {@link #initLoop()} every loop, {@link #homeTurret()} on the home button.
+ * {@link #initLoop()} every loop, {@link #homeTurret()} on the home button and
+ * {@link #servosToStart()} on the start-position button.
  * Main loop: {@link #drive} (TeleOp) or a Pedro path (AUTO), then {@link #update}, then
  * {@link #shoot}, once each.
  */
@@ -39,6 +41,7 @@ public final class RobotSys {
     private final Feeder feeder;
     private final Gate gate;
     private final Intake intake;
+    private final IntakeServo intakeServo;
     private Alliance alliance;
     /** The current feed was started by force fire, not by the checks. */
     private boolean forced;
@@ -60,12 +63,25 @@ public final class RobotSys {
         feeder = new Feeder(hardwareMap);
         gate = new Gate(hardwareMap);
         intake = new Intake(hardwareMap);
+        intakeServo = new IntakeServo(hardwareMap);
     }
 
     // ------------------------------------------------------------------ INIT
     /** Call every INIT loop. Nothing moves unless {@link #homeTurret()} was requested. */
     public void initLoop() {
         shooter.initLoop();
+    }
+
+    /**
+     * INIT button: puts every servo in its start position for TeleOp: turret straight forward,
+     * hood start, gate closed, intake servo INIT. The encoder is not zeroed (homing does that),
+     * and the intake motor, flywheel and feeder do not move.
+     */
+    public void servosToStart() {
+        shooter.servosToStart();
+        gate.update(false);
+        intakeServo.setMode(IntakeServo.Mode.INIT);
+        intakeServo.update();
     }
 
     /** Starts turret homing (the home button): the turret moves to its zero and the encoder is zeroed. */
@@ -125,6 +141,7 @@ public final class RobotSys {
         shooter.update();
         // "Launching" = the gate is open or a pulse is running; the intake always runs then.
         intake.update(gate.wantsOpen() || feeder.isFeeding());
+        intakeServo.update();
         Pose pose = follower.pose();
         PoseStorage.save(pose.x(), pose.y(), pose.heading(), alliance, shooter.upCell());
     }
@@ -267,10 +284,23 @@ public final class RobotSys {
         return intake;
     }
 
+    public IntakeServo intakeServo() {
+        return intakeServo;
+    }
+
     // ------------------------------------------------------------------ intake controls
     /** Switch the intake on/off by hand. It always runs during launches regardless. */
     public void toggleIntake() {
         intake.toggleManual();
+    }
+
+    /** Intake servo position: INIT (stowed), COLLECT_ALL or COLLECT_POLLEN. */
+    public void setIntakeMode(IntakeServo.Mode mode) {
+        intakeServo.setMode(mode);
+    }
+
+    public IntakeServo.Mode intakeMode() {
+        return intakeServo.mode();
     }
 
     /** Hold true to run the intake backwards (clears a jam). */
@@ -284,8 +314,8 @@ public final class RobotSys {
         telemetry.addData("Pose", "x %.1f  y %.1f  h %.1f deg", pose.x(), pose.y(), Math.toDegrees(pose.heading()));
         telemetry.addData("Trims", "aim %.1f deg, distance %.0f in",
                 Math.toDegrees(solver().aimTrimRad), solver().distanceTrimIn);
-        telemetry.addData("Intake", "%s  (manual %s)",
-                intake.isRunning() ? "RUNNING" : "off", intake.isManualOn() ? "on" : "off");
+        telemetry.addData("Intake", "%s  (manual %s), servo %s",
+                intake.isRunning() ? "RUNNING" : "off", intake.isManualOn() ? "on" : "off", intakeServo.mode());
         telemetry.addData("Gate / feeding", "%s / %b%s  (feeds %d)",
                 gate.wantsOpen() ? "OPEN" : "closed",
                 feeder.isFeeding(), feeder.isFeeding() && forced ? " (FORCED)" : "", feeder.feeds());

@@ -1,4 +1,6 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.field;
+
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 
 /**
  * Tracks which CELL of our HIVE is up, so it can be targeted (G417). The up CELL swaps after

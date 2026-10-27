@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.aiming;
 
 import java.util.Arrays;
 

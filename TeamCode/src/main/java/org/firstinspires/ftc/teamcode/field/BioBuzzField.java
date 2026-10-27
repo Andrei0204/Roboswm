@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.field;
 
 /**
  * BIOBUZZ (FTC 2026-2027) field geometry, in the Pedro field frame.

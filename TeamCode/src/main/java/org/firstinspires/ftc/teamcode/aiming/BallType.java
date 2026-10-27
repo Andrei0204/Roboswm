@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.aiming;
 
 /**
  * BIOBUZZ game pieces that can be launched into a CELL (Competition Manual section 9.8). They

@@ -50,6 +50,7 @@ Ground rules:
 | Feeder | Motor or CR Servo | `FEEDER_NAME` (`feeder`) |
 | Gate (between feeder and launcher) | Servo | `GATE_SERVO_NAME` (`gate`) |
 | Intake | Motor | `INTAKE_MOTOR_NAME` (`intake`) |
+| Intake servo (3 positions) | Servo | `INTAKE_SERVO_NAME` (`intakeServo`) |
 
 The turret encoder must **not** be on a Pedro dead-wheel port, and no code of yours may reset
 that port. Homing resets it, and that briefly stops any motor plugged into the same port, so use
@@ -208,12 +209,15 @@ After that the limits are **not** applied, so move in small steps.
    `GATE_CLOSED_POSITION` / `GATE_OPEN_POSITION`. Film it opening and set `GATE_OPEN_DELAY_SEC`
    to that time plus a little. The robot opens the gate when a feed is wanted, and the feeder
    only starts after that delay.
-5. **Intake direction.** In *Shoot On The Move*, press **A** with a ball near the intake: it must
+5. **Intake servo.** In **Hood & Feeder Test**, use **gamepad2** dpad up/down to move it. Press
+   **X** at the stowed position, **A** at collect-all and **B** at collect-pollen-only, then paste
+   the printed numbers into the `IntakeServo.Mode` enum values (`INIT(...)`, `COLLECT_ALL(...)`, `COLLECT_POLLEN(...)`). In the TeleOp, dpad up/left/down switch between them.
+6. **Intake direction.** In *Shoot On The Move*, press **A** with a ball near the intake: it must
    pull balls in toward the feeder. If not, make `INTAKE_POWER` negative. Hold **X** to check
    reverse. The intake also always runs during launches.
-6. **Feeder direction.** With no balls loaded, holding **right trigger** must move balls toward
+7. **Feeder direction.** With no balls loaded, holding **right trigger** must move balls toward
    the flywheel. If not, make `FEEDER_FIRE_POWER` negative.
-7. **One ball per pulse.** In **Flywheel Tuner** closed loop, load 2 balls and press the right
+8. **One ball per pulse.** In **Flywheel Tuner** closed loop, load 2 balls and press the right
    trigger once.
    - Exactly one ball must leave.
    - The ball doesn't fully leave → raise `FEEDER_PULSE_SEC`.
@@ -264,8 +268,6 @@ Tool: **Shooter Calibration**. Steps 1–6 must be done.
    hood to crossing the opening plane ÷ 240. Average 3 shots.
 5. Paste the rows into `SHOT_TABLE_POLLEN` with **distances strictly increasing** (otherwise the
    OpMode stops at INIT with an error), replacing `TOF` with your values. Redeploy.
-6. Optional: run the off-robot tests from the README. They use your table and check that moving
-   shots still close.
 
 `SHOT_TABLE_NECTAR` only matters if you set `SHOOTS_NECTAR = true`.
 
@@ -380,7 +382,8 @@ quickly. The drivers should cross the face instead.
    ~0.0". Your AUTO OpMode needs the same INIT code as *Shoot On The Move*: build a `RobotSys`,
    call `robot.initLoop()` every INIT loop, and call `robot.homeTurret()` on Y.
 3. Place the robot exactly on the start pose.
-4. TeleOp INIT: the turret should already say "homed". If it says NOT HOMED, press Y.
+4. TeleOp INIT: the turret should already say "homed". If it says NOT HOMED, press Y. Press
+   **A** to put all servos in their start positions (and set `HOOD_START_POSITION` once).
 
 **After any power cycle:** home again, or the turret will not shoot.
 

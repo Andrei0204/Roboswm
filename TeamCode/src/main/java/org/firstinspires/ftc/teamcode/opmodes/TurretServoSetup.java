@@ -7,10 +7,10 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.shooter.ShooterConstants;
-import org.firstinspires.ftc.teamcode.shooter.TurretMath;
 
 import java.util.Locale;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
+import org.firstinspires.ftc.teamcode.subsystems.TurretMath;
 
 /**
  * Calibrates the servo turret and its external encoder (no Pedro needed).

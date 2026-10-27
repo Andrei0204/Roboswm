@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.aiming;
 
 /**
  * Output of {@link ShotSolver}. One instance is reused every loop, so copy any field you need

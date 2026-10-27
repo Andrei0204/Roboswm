@@ -3,15 +3,15 @@ package org.firstinspires.ftc.teamcode.opmodes;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.RobotSys;
-import org.firstinspires.ftc.teamcode.shooter.Alliance;
-import org.firstinspires.ftc.teamcode.shooter.BallType;
-import org.firstinspires.ftc.teamcode.shooter.ShotSolution;
-import org.firstinspires.ftc.teamcode.shooter.ShooterConstants;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.firstinspires.ftc.teamcode.aiming.BallType;
+import org.firstinspires.ftc.teamcode.aiming.ShotSolution;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
+import org.firstinspires.ftc.teamcode.field.Alliance;
+import org.firstinspires.ftc.teamcode.robot.RobotSys;
 
 /**
  * Builds SHOT_TABLE_POLLEN and SHOT_TABLE_NECTAR. Park the robot STILL, head-on to the up CELL,

@@ -1,4 +1,6 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.subsystems;
+
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 
 /**
  * Control logic for the servo + external-encoder turret. Pure math with no hardware, so it can
@@ -239,11 +241,6 @@ public final class TurretController {
     /** True if the last homing's reset did not read back as 0 (the zero was not set). */
     public boolean resetFailed() {
         return resetFailed;
-    }
-
-    /** Forgets the homing, as an app restart would. For off-robot tests. */
-    static void forgetHomingForTest() {
-        homedSinceAppStart = false;
     }
 
     /** True if the last homing ended on its timeout instead of seeing the turret still. */
