@@ -1,17 +1,19 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.config;
+
+import org.firstinspires.ftc.teamcode.aiming.BallType;
 
 /**
  * Every tunable number used by the shoot-on-the-move system, in one place.
  *
  * Units: inches, seconds and radians, unless the name ends in _DEG (degrees) or _RPM.
- * Frames: the Pedro field frame described in {@link BioBuzzField}, and Pedro's robot frame
+ * Frames: the Pedro field frame described in {@code BioBuzzField}, and Pedro's robot frame
  * (+x forward, +y left, angles counter-clockwise positive, 0 = robot forward).
  *
  * Values tagged MEASURE are placeholders. The code runs with them, but the robot will not
  * hit the HIVE until they have been measured on your robot and field.
  *
  * The fields are public static and non-final so a live-tuning dashboard can edit them.
- * After editing a shot table at runtime, call {@link ShotSolver#reloadTables()}.
+ * After editing a shot table at runtime, call {@code ShotSolver.reloadTables()}.
  */
 public final class ShooterConstants {
     private ShooterConstants() {}
@@ -39,6 +41,8 @@ public final class ShooterConstants {
     public static String GATE_SERVO_NAME = "gate";
     /** Intake motor that collects balls into the feeder. */
     public static String INTAKE_MOTOR_NAME = "intake";
+    /** Intake servo with three positions (see IntakeServo.Mode, which holds the positions). */
+    public static String INTAKE_SERVO_NAME = "intakeServo";
 
     // ------------------------------------------------------------------ robot geometry
     /**
@@ -155,6 +159,8 @@ public final class ShooterConstants {
     /** Hood servo position limits; keep them inside the mechanism's hard stops. MEASURE. */
     public static double HOOD_MIN_POSITION = 0.10;
     public static double HOOD_MAX_POSITION = 0.90;
+    /** Hood position for the start of TeleOp (the "servos to start" button in INIT). MEASURE. */
+    public static double HOOD_START_POSITION = 0.10;
     /** Seconds the servo needs to sweep the full 0..1 position range under load. MEASURE. */
     public static double HOOD_SECONDS_PER_FULL_RANGE = 0.60;
     /** Extra wait after the modeled arrival before the hood counts as settled. */

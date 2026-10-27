@@ -5,12 +5,12 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
-import org.firstinspires.ftc.teamcode.shooter.Feeder;
-import org.firstinspires.ftc.teamcode.shooter.Flywheel;
-import org.firstinspires.ftc.teamcode.shooter.ShooterConstants;
 
 import java.util.List;
 import java.util.Locale;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
+import org.firstinspires.ftc.teamcode.subsystems.Feeder;
+import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
 
 /**
  * Tunes the flywheel (no Pedro needed). See TUNING.md, step 4.

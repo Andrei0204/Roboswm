@@ -5,10 +5,11 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.shooter.Feeder;
-import org.firstinspires.ftc.teamcode.shooter.ShooterConstants;
 
 import java.util.Locale;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
+import org.firstinspires.ftc.teamcode.subsystems.Feeder;
+import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
 
 /**
  * Finds the hood limits and checks the feeder (no Pedro needed). See TUNING.md, step 5.
@@ -21,6 +22,10 @@ import java.util.Locale;
  * <p>GATE: dpad up/down = gate position +/-0.01 (right bumper: 0.002). Left bumper = record this
  * as CLOSED, B = record this as OPEN; paste the printed lines. Set GATE_OPEN_DELAY_SEC to the
  * time the gate needs to open (film it).
+ *
+ * <p>INTAKE SERVO (gamepad2): dpad up/down = position +/-0.01 (gamepad2 right bumper: 0.002).
+ * X = record this as INIT, A = record as COLLECT_ALL, B = record as COLLECT_POLLEN; paste the
+ * printed lines.
  *
  * <p>FEEDER (no balls loaded): hold right trigger = feed direction, hold left trigger = reverse.
  * Balls must move toward the flywheel with the right trigger; if not, make FEEDER_FIRE_POWER
@@ -36,6 +41,7 @@ public class HoodFeederTest extends LinearOpMode {
                     ShooterConstants.HOOD_PWM_MIN_US, ShooterConstants.HOOD_PWM_MAX_US));
         }
         Servo gate = hardwareMap.get(Servo.class, ShooterConstants.GATE_SERVO_NAME);
+        Servo intakeServo = hardwareMap.get(Servo.class, ShooterConstants.INTAKE_SERVO_NAME);
         Feeder feeder = new Feeder(hardwareMap);
 
         telemetry.addLine("Press START: the hood moves to the middle of its current limits.");
@@ -46,6 +52,8 @@ public class HoodFeederTest extends LinearOpMode {
         double endX = Double.NaN, endY = Double.NaN;
         double gatePosition = ShooterConstants.GATE_CLOSED_POSITION;
         double gateClosed = Double.NaN, gateOpen = Double.NaN;
+        double intakePosition = IntakeServo.Mode.INIT.position;
+        double intakeInit = Double.NaN, intakeAll = Double.NaN, intakePollen = Double.NaN;
         boolean swingToY = true;
         double swingStart = Double.NaN;
 
@@ -68,6 +76,14 @@ public class HoodFeederTest extends LinearOpMode {
             if (gamepad1.leftBumperWasPressed()) gateClosed = gatePosition;
             if (gamepad1.bWasPressed()) gateOpen = gatePosition;
             gate.setPosition(gatePosition);
+
+            double intakeStep = gamepad2.right_bumper ? 0.002 : 0.01;
+            if (gamepad2.dpadUpWasPressed()) intakePosition = Math.min(1.0, intakePosition + intakeStep);
+            if (gamepad2.dpadDownWasPressed()) intakePosition = Math.max(0.0, intakePosition - intakeStep);
+            if (gamepad2.xWasPressed()) intakeInit = intakePosition;
+            if (gamepad2.aWasPressed()) intakeAll = intakePosition;
+            if (gamepad2.bWasPressed()) intakePollen = intakePosition;
+            intakeServo.setPosition(intakePosition);
 
             double feed = gamepad1.right_trigger > 0.5 ? ShooterConstants.FEEDER_FIRE_POWER
                     : gamepad1.left_trigger > 0.5 ? -ShooterConstants.FEEDER_FIRE_POWER : Double.NaN;
@@ -94,6 +110,12 @@ public class HoodFeederTest extends LinearOpMode {
                             Double.isNaN(gateOpen) ? "press B" : String.format(Locale.US, "%.3f", gateOpen)));
             if (!Double.isNaN(gateClosed) && !Double.isNaN(gateOpen)) {
                 telemetry.addLine(String.format(Locale.US, "GATE_CLOSED_POSITION = %.3f;  GATE_OPEN_POSITION = %.3f;", gateClosed, gateOpen));
+            }
+            telemetry.addData("Intake servo (gamepad2 dpad)", "%.3f   X=init A=all B=pollen", intakePosition);
+            if (!Double.isNaN(intakeInit) && !Double.isNaN(intakeAll) && !Double.isNaN(intakePollen)) {
+                telemetry.addLine(String.format(Locale.US,
+                        "In IntakeServo.Mode: INIT(%.3f), COLLECT_ALL(%.3f), COLLECT_POLLEN(%.3f)",
+                        intakeInit, intakeAll, intakePollen));
             }
             telemetry.addData("Feeder", Double.isNaN(feed) ? "idle (RT = feed, LT = reverse)"
                     : String.format(Locale.US, "power %.2f", feed));

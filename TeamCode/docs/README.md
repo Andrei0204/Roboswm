@@ -32,62 +32,37 @@ rationale is in `reports/FTC turret shooting while moving.md`.
    - turret homed, and its target inside the reachable range (not in the dead zone behind it)
    - no HIVE TIP in the last `HIVE_TIP_PAUSE_SEC`
 
-## Off-robot tests
+## Code layout
 
-Both tests are in `TeamCode/src/test/java/.../shooter/`.
+All under `src/main/java/org/firstinspires/ftc/teamcode/`.
 
-- **`SolverSimTest`** launches simulated balls the way the solver commands, from random moving
-  states. It covers turret offset, rotation, acceleration, linear drag, both ball types and
-  both alliances. The worst miss is 0.0001 in, against a 17 in average miss when aiming
-  straight at the goal. It also checks the signs, wrap logic and symmetry, and that the
-  feedforward matches a finite difference within 0.3°/s.
-- **`TurretSimTest`** runs `TurretController` against a deliberately imperfect Axon turret:
-  3% scale error, 50 ms lag, 400°/s slew, 0.8° backlash, and a quantized encoder with
-  hub-style velocity. It checks:
-  - nothing moving in INIT without the button
-  - homing from any start angle, an encoder reset that only shows up after one stale
-    bulk-cached read, and catching a reset that never happens
-  - the count carrying to the next OpMode, an app restart forgetting the homing, and an
-    impossible count being dropped
-  - an un-homed turret never counting as aimed
-  - static error (0.03°)
-  - 60°/s tracking error (1.6°)
-  - no hunting
-  - dead-zone handling
-  - that "aimed" is never reported while the true error exceeds the tolerance
+| Package | Class | Purpose |
+|---|---|---|
+| `robot` | `RobotSys` | the whole robot for OpModes: Pedro, shooter, feeder, gate, intake, bulk caching AUTO |
+| `aiming` | `ShootOnTheMove` | aiming: turret, flywheel, hood and the ready check (no feeder) |
+| | `ShotSolver`, `ShotSolution` | the math above (no hardware, testable) |
+| | `MotionEstimator` | velocity smoothing and acceleration estimate (Pedro 3 has none) |
+| | `InterpolatingTable`, `BallType` | shot-table lookup; POLLEN / NECTAR |
+| `subsystems` | `Turret` | turret hardware: Axon servo(s) out, external encoder in |
+| | `TurretController`, `TurretMath` | homing, servo lead, encoder correction, encoder aim check, angle↔position map, range handling (no hardware, testable) |
+| | `Flywheel` | kS + kV feedforward + P, full power when far below target |
+| | `Hood` | servo hood with a travel-time model for "settled" |
+| | `Feeder` | motor or CR servo transfer: one pulse per ball, separate from the shooter |
+| | `Gate` | servo between feeder and launcher: open/closed positions and an open delay |
+| | `Intake` | intake motor: always on while launching, on/off by hand, reverse to clear jams |
+| | `IntakeServo` | the intake's 3-position servo; its `Mode` enum (INIT, COLLECT_ALL, COLLECT_POLLEN) holds the positions |
+| `field` | `BioBuzzField` | HIVE CELL aim points, field frame, reset pose, AprilTag IDs |
+| | `HiveState`, `HiveCell`, `Alliance` | which CELL is up (swaps on every TIP); sides |
+| | `PoseStorage` | hands pose, alliance and up CELL from AUTO to TeleOp |
+| `config` | `ShooterConstants` | every tunable number (MEASURE = placeholder), both shot tables |
+| `opmodes` | `ShootOnTheMoveTeleOp` | match TeleOp |
+| | `ShooterCalibration` | builds the shot tables |
+| | `TurretServoSetup` | finds the turret servo zero and scale, encoder sign and mounting, and limits |
+| | `FlywheelTuner` | measures flywheel kS/kV (open loop) and shot recovery (closed loop) |
+| | `HoodFeederTest` | finds hood, gate and intake servo positions, checks feeder direction |
+| `pedro` | `Constants`, tuners | Pedro Pathing setup |
 
-Run both from the project root after changing tables or turret constants:
-
-```bash
-mkdir -p build/sotm-test && javac --release 8 -d build/sotm-test TeamCode/src/main/java/org/firstinspires/ftc/teamcode/shooter/{ShooterConstants,InterpolatingTable,ShotSolution,ShotSolver,BioBuzzField,Alliance,HiveCell,BallType,MotionEstimator,TurretMath,TurretController}.java TeamCode/src/test/java/org/firstinspires/ftc/teamcode/shooter/*.java && java -cp build/sotm-test org.firstinspires.ftc.teamcode.shooter.SolverSimTest && java -cp build/sotm-test org.firstinspires.ftc.teamcode.shooter.TurretSimTest
-```
-
-## Files
-
-| File | Purpose |
-|---|---|
-| `ShooterConstants` | every tunable number (MEASURE = placeholder), both shot tables |
-| `BioBuzzField` | HIVE CELL aim points, field frame, reset pose, AprilTag IDs |
-| `BallType` | POLLEN / NECTAR (diameter, table selection) |
-| `ShotSolver`, `ShotSolution` | the math above (no hardware, testable) |
-| `MotionEstimator` | velocity smoothing and acceleration estimate (Pedro 3 has none) |
-| `Turret` | turret hardware: Axon servo(s) out, external encoder in |
-| `TurretController`, `TurretMath` | homing, servo lead, encoder correction, encoder aim check, angle↔position map, range handling (no hardware, testable) |
-| `Flywheel` | kS + kV feedforward + P, full power when far below target |
-| `Hood` | servo hood with a travel-time model for "settled" |
-| `Feeder` | motor or CR servo transfer: one pulse per ball, separate from the shooter |
-| `Intake` | intake motor: always on while launching, on/off by hand otherwise; reverse to clear jams |
-| `Gate` | servo between feeder and launcher: open/closed positions and an open delay |
-| `HiveState` | which CELL is up (swaps on every TIP) |
-| `ShootOnTheMove` | aiming: turret, flywheel, hood and the ready check (no feeder) |
-| `../RobotSys` | the whole robot for OpModes: Pedro, shooter, feeder, bulk caching AUTO |
-| `PoseStorage` | hands pose, alliance and up CELL from AUTO to TeleOp |
-| `opmodes/ShootOnTheMoveTeleOp` | match TeleOp |
-| `opmodes/ShooterCalibration` | builds the shot tables |
-| `opmodes/TurretServoSetup` | finds the turret servo zero and scale, encoder sign and mounting, and limits |
-| `opmodes/FlywheelTuner` | measures flywheel kS/kV (open loop) and shot recovery (closed loop) |
-| `opmodes/HoodFeederTest` | finds hood servo limits and travel time, checks feeder direction |
-| `TUNING.md` | the tuning tutorial |
+Docs are in `TeamCode/docs/` ([TUNING.md](TUNING.md) is the tuning tutorial).
 
 ## Setup and tuning
 
@@ -97,8 +72,9 @@ and HIVE tips. It names the OpMode, the constants and the pass check for every s
 
 ## Controls (TeleOp)
 
-- **INIT:** gamepad1 X = blue, B = red, Y = home the turret. That is the only movement in
-  INIT and only on this button; the gate, hood, flywheel and feeder stay still until START.
+- **INIT:** gamepad1 X = blue, B = red, Y = home the turret, A = move all servos to their
+  start position (turret forward, hood start, gate closed, intake servo INIT). Those buttons are
+  the only movement in INIT; the flywheel, feeder and intake motor stay still until START.
 
 - **Driver (gamepad1):**
   - left stick: drive (field-centric)
@@ -108,6 +84,7 @@ and HIVE tips. It names the OpMode, the constants and the pass check for every s
   - right trigger: fire. It rumbles when the driving is what blocks the shot: side, angle,
     speed, or the CELL behind the turret's dead zone (rotate the robot).
   - A: intake on/off (it always runs during launches). X held: intake reverse.
+  - dpad up: intake servo collect all. Dpad left: collect pollen only. Dpad down: back to init.
   - left trigger: **force fire**. It feeds no matter what: no aim, flywheel, range or HIVE-tip
     check, not even "flywheel armed" or gamepad2's hold fire. Telemetry shows (FORCED).
   - back: reset pose in the alliance corner

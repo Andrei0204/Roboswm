@@ -1,4 +1,7 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.aiming;
+
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
+import org.firstinspires.ftc.teamcode.field.BioBuzzField;
 
 /**
  * Shoot-on-the-move solver. It is pure math with no hardware or Pedro types, so it can be

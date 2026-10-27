@@ -1,10 +1,11 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 
 /**
  * Turret hardware: positional servo(s) in servo mode (an Axon MAX geared 60:24 then 26:76)
@@ -73,6 +74,14 @@ public final class Turret {
         double position = controller.initUpdate(dt);
         if (!Double.isNaN(position)) writePosition(position);
         if (controller.takeResetRequest()) resetEncoderCount();
+    }
+
+    /**
+     * Moves the servo to its zero position (shooting straight forward) without zeroing the
+     * encoder; homing does that. For the "servos to start" button.
+     */
+    public void moveToStartPosition() {
+        writePosition(Math.max(0.0, Math.min(1.0, TurretMath.positionForAngle(0.0))));
     }
 
     /** Sets the encoder count to 0 at the homed turret position, keeping the port's run mode. */

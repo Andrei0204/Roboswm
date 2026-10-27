@@ -2,10 +2,11 @@ package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
+import org.firstinspires.ftc.teamcode.field.Alliance;
+import org.firstinspires.ftc.teamcode.robot.RobotSys;
+import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
 
-import org.firstinspires.ftc.teamcode.RobotSys;
-import org.firstinspires.ftc.teamcode.shooter.Alliance;
-import org.firstinspires.ftc.teamcode.shooter.ShooterConstants;
 
 /**
  * Field-centric driving with an auto-aiming turret that shoots into the up CELL of our HIVE
@@ -13,16 +14,19 @@ import org.firstinspires.ftc.teamcode.shooter.ShooterConstants;
  *
  * <p>INIT: gamepad1 X = blue, B = red (skipped if AUTO already stored a pose). Without a stored
  * pose the robot must start in the alliance reset corner (see BioBuzzField.resetPose).
- * gamepad1 Y = request turret homing. NOTHING moves in INIT: the turret goes to its zero right
- * after START. Homing is only requested here; a zero homed in an earlier OpMode (e.g. AUTO) is reused. Without a zero the
- * turret points but never shoots.
+ * gamepad1 Y = home the turret (the turret moves to its zero; a zero homed in an earlier OpMode,
+ * e.g. AUTO, is reused). gamepad1 A = move all servos to their start position (turret forward,
+ * hood start, gate closed, intake servo INIT). Those two buttons are the only movement in INIT;
+ * everything else stays still until START. Without a homed zero the turret points but never
+ * shoots.
  *
  * <p>gamepad1 (driver): left stick = drive (field-centric), right stick X = turn,
  * right bumper = slow, right trigger = fire (fires only when ready; rumbles when the driving is
  * what blocks the shot), left trigger = FORCE fire (bypasses every check, including flywheel
  * armed and gamepad2 hold fire), left bumper = arm/disarm the flywheel, back = reset pose (robot
  * in the reset corner), A = intake on/off (it always runs during launches too), X held = intake
- * reverse (clears a jam).
+ * reverse (clears a jam),
+ * dpad up = intake servo collect all, dpad left = collect pollen only, dpad down = back to init.
  *
  * <p>gamepad2 (operator): Y = our HIVE tipped (switch CELL), X = undo a TIP, B = next ball
  * POLLEN/NECTAR (only if SHOOTS_NECTAR), left bumper = hold fire, dpad left/right = aim trim -/+0.5 deg,
@@ -53,6 +57,7 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
             }
 //            }
             if (gamepad1.yWasPressed()) robot.homeTurret();
+            if (gamepad1.aWasPressed()) robot.servosToStart();
             robot.initLoop();
             telemetry.addData("Alliance", "%s  %s", robot.alliance(),
                     fromAuto ? "(from previous OpMode)" : "(gamepad1 X = blue, B = red)");
@@ -61,6 +66,7 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
                     : "reset corner: place the robot there");
             telemetry.addData("Up CELL", robot.upCell());
             telemetry.addData("Turret (gamepad1 Y = home)", robot.turretStatus());
+            telemetry.addData("Servos", "gamepad1 A = move all servos to their start position");
             telemetry.update();
             idle();
         }
@@ -93,6 +99,9 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
             if (gamepad1.backWasPressed()) robot.resetPoseToCorner();
             if (gamepad1.aWasPressed()) robot.toggleIntake();
             robot.setIntakeReverse(gamepad1.x);
+            if (gamepad1.dpadUpWasPressed()) robot.setIntakeMode(IntakeServo.Mode.COLLECT_ALL);
+            if (gamepad1.dpadLeftWasPressed()) robot.setIntakeMode(IntakeServo.Mode.COLLECT_POLLEN);
+            if (gamepad1.dpadDownWasPressed()) robot.setIntakeMode(IntakeServo.Mode.INIT);
 
             if (gamepad2.yWasPressed()) robot.reportHiveTip();
             if (gamepad2.xWasPressed()) robot.undoHiveTip();

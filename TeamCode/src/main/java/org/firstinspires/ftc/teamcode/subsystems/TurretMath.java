@@ -1,4 +1,7 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.subsystems;
+
+import org.firstinspires.ftc.teamcode.aiming.ShotSolver;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 
 /** Turret angle wrapping, servo mapping and encoder scaling. Pure math, testable off the robot. */
 public final class TurretMath {

@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.shooter;
+package org.firstinspires.ftc.teamcode.aiming;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
@@ -9,11 +9,19 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 import java.util.List;
+import org.firstinspires.ftc.teamcode.config.ShooterConstants;
+import org.firstinspires.ftc.teamcode.field.Alliance;
+import org.firstinspires.ftc.teamcode.field.BioBuzzField;
+import org.firstinspires.ftc.teamcode.field.HiveCell;
+import org.firstinspires.ftc.teamcode.field.HiveState;
+import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
+import org.firstinspires.ftc.teamcode.subsystems.Hood;
+import org.firstinspires.ftc.teamcode.subsystems.Turret;
 
 /**
  * Shoot-on-the-move aiming: turret + flywheel + hood, aimed at the up CELL of our BIOBUZZ HIVE
  * using Pedro Pathing's pose and velocity. It decides when a shot is ready ({@link #isReady()});
- * feeding the ball is the {@link Feeder}'s job, and {@code RobotSys} ties the two together.
+ * feeding the ball is the {@code Feeder}'s job, and {@code RobotSys} ties the two together.
  *
  * <p>Call {@link #update()} once per loop, after {@code follower.update()}. It reads the
  * mechanism sensors, solves the shot and drives the turret, flywheel and hood.
@@ -76,6 +84,12 @@ public final class ShootOnTheMove {
         lastNanos = nanos;
         turret.readSensors();
         turret.initUpdate(dt);
+    }
+
+    /** Moves the turret and hood servos to their start positions (the INIT "servos to start" button). */
+    public void servosToStart() {
+        turret.moveToStartPosition();
+        hood.setPosition(ShooterConstants.HOOD_START_POSITION, 0.0);
     }
 
     /** Starts turret homing (the home button): the turret moves to its zero, in INIT or after. */
