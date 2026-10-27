@@ -75,9 +75,12 @@ mkdir -p build/sotm-test && javac --release 8 -d build/sotm-test TeamCode/src/ma
 | `TurretController`, `TurretMath` | homing, servo lead, encoder correction, encoder aim check, angle↔position map, range handling (no hardware, testable) |
 | `Flywheel` | kS + kV feedforward + P, full power when far below target |
 | `Hood` | servo hood with a travel-time model for "settled" |
-| `Feeder` | motor or CR servo transfer, one pulse per ball |
+| `Feeder` | motor or CR servo transfer: one pulse per ball, separate from the shooter |
+| `Intake` | intake motor: always on while launching, on/off by hand otherwise; reverse to clear jams |
+| `Gate` | servo between feeder and launcher: open/closed positions and an open delay |
 | `HiveState` | which CELL is up (swaps on every TIP) |
-| `ShootOnTheMove` | runs everything each loop |
+| `ShootOnTheMove` | aiming: turret, flywheel, hood and the ready check (no feeder) |
+| `../RobotSys` | the whole robot for OpModes: Pedro, shooter, feeder, bulk caching AUTO |
 | `PoseStorage` | hands pose, alliance and up CELL from AUTO to TeleOp |
 | `opmodes/ShootOnTheMoveTeleOp` | match TeleOp |
 | `opmodes/ShooterCalibration` | builds the shot tables |
@@ -94,7 +97,8 @@ and HIVE tips. It names the OpMode, the constants and the pass check for every s
 
 ## Controls (TeleOp)
 
-- **INIT:** gamepad1 X = blue, B = red, Y = home the turret.
+- **INIT:** gamepad1 X = blue, B = red, Y = home the turret. That is the only movement in
+  INIT and only on this button; the gate, hood, flywheel and feeder stay still until START.
 
 - **Driver (gamepad1):**
   - left stick: drive (field-centric)
@@ -103,6 +107,7 @@ and HIVE tips. It names the OpMode, the constants and the pass check for every s
   - left bumper: arm flywheel
   - right trigger: fire. It rumbles when the driving is what blocks the shot: side, angle,
     speed, or the CELL behind the turret's dead zone (rotate the robot).
+  - A: intake on/off (it always runs during launches). X held: intake reverse.
   - left trigger: **force fire**. It feeds no matter what: no aim, flywheel, range or HIVE-tip
     check, not even "flywheel armed" or gamepad2's hold fire. Telemetry shows (FORCED).
   - back: reset pose in the alliance corner
@@ -122,5 +127,6 @@ and HIVE tips. It names the OpMode, the constants and the pass check for every s
 - Ball-type sensing (color sensor at the feeder). The hook is `ShootOnTheMove.setNextBall`.
 - A fill estimate that pauses after each shot once a TIP is likely (report, HIVE-state machine).
 - Vision relocalization. Pedro's `FusionLocalizer` handles latency-stamped poses.
-- AUTO routines. Call `shooter.update(fire)` after `follower.update()`, then save
-  `PoseStorage` at the end. Expect the first TIP after about 3 POLLEN.
+- AUTO routines. Build a `RobotSys`, follow paths with `robot.follower()`, and call
+  `robot.update()` then `robot.shoot(fire, false)` once per loop (update also saves `PoseStorage`). Expect the first TIP
+  after about 3 POLLEN.
