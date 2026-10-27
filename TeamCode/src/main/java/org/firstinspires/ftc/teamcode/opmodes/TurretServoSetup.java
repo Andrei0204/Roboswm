@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -39,6 +40,9 @@ public class TurretServoSetup extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+        for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
         String[] names = ShooterConstants.TURRET_SERVO_NAMES;
         Servo[] servos = new Servo[names.length];
         for (int i = 0; i < names.length; i++) {

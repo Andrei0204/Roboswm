@@ -48,6 +48,8 @@ Ground rules:
 | Flywheel motor(s); the first has the encoder | Motor | `FLYWHEEL_MOTOR_NAMES` (`flywheel`) |
 | Hood servo | Servo | `HOOD_SERVO_NAME` (`hood`) |
 | Feeder | Motor or CR Servo | `FEEDER_NAME` (`feeder`) |
+| Gate (between feeder and launcher) | Servo | `GATE_SERVO_NAME` (`gate`) |
+| Intake | Motor | `INTAKE_MOTOR_NAME` (`intake`) |
 
 The turret encoder must **not** be on a Pedro dead-wheel port, and no code of yours may reset
 that port. Homing resets it, and that briefly stops any motor plugged into the same port, so use
@@ -150,7 +152,7 @@ Tool: **Turret Servo Setup** (no Pedro needed).
    This matters while the robot spins: at 3 rad/s a 5 in offset is a 15 in/s error.
 8. **Homing check** (*Shoot On The Move*):
    - In INIT, press **gamepad1 Y**. The turret goes to zero and INIT shows "homed, encoder angle
-     ~0.0".
+     ~0.0". Nothing else moves in INIT.
    - Stop and start the OpMode again. It should already say "homed": the count carried over.
    - Power-cycle the robot. It must say "NOT HOMED since power-on".
 
@@ -201,9 +203,17 @@ After that the limits are **not** applied, so move in small steps.
 3. Press **A** to swing between the ends and film it. Time one swing (t, in seconds):
    `HOOD_SECONDS_PER_FULL_RANGE = t / (HOOD_MAX_POSITION − HOOD_MIN_POSITION)`, plus about 15%.
    Too small a value fires before the hood arrives.
-4. **Feeder direction.** With no balls loaded, holding **right trigger** must move balls toward
+4. **Gate.** With dpad up/down, move the gate to just short of fully closed (balls held back) and
+   press **left bumper**, then to open (balls pass freely) and press **B**. Paste
+   `GATE_CLOSED_POSITION` / `GATE_OPEN_POSITION`. Film it opening and set `GATE_OPEN_DELAY_SEC`
+   to that time plus a little. The robot opens the gate when a feed is wanted, and the feeder
+   only starts after that delay.
+5. **Intake direction.** In *Shoot On The Move*, press **A** with a ball near the intake: it must
+   pull balls in toward the feeder. If not, make `INTAKE_POWER` negative. Hold **X** to check
+   reverse. The intake also always runs during launches.
+6. **Feeder direction.** With no balls loaded, holding **right trigger** must move balls toward
    the flywheel. If not, make `FEEDER_FIRE_POWER` negative.
-5. **One ball per pulse.** In **Flywheel Tuner** closed loop, load 2 balls and press the right
+7. **One ball per pulse.** In **Flywheel Tuner** closed loop, load 2 balls and press the right
    trigger once.
    - Exactly one ball must leave.
    - The ball doesn't fully leave → raise `FEEDER_PULSE_SEC`.
@@ -367,8 +377,8 @@ quickly. The drivers should cross the face instead.
 **Before each match:**
 1. Battery ≥ 12.8 V. Turret free to move.
 2. AUTO INIT: choose the alliance, press **gamepad1 Y**, and wait for "homed, encoder angle
-   ~0.0". Your AUTO OpMode needs the same INIT code as *Shoot On The Move*: clear the bulk cache
-   and call `shooter.initLoop()` every INIT loop, and call `shooter.homeTurret()` on Y.
+   ~0.0". Your AUTO OpMode needs the same INIT code as *Shoot On The Move*: build a `RobotSys`,
+   call `robot.initLoop()` every INIT loop, and call `robot.homeTurret()` on Y.
 3. Place the robot exactly on the start pose.
 4. TeleOp INIT: the turret should already say "homed". If it says NOT HOMED, press Y.
 

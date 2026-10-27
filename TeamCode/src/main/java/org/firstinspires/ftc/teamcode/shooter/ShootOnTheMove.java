@@ -11,16 +11,12 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import java.util.List;
 
 /**
- * Shoot-on-the-move subsystem: turret + flywheel + hood + feeder, aimed at the up CELL of our
- * BIOBUZZ HIVE using Pedro Pathing's pose and velocity.
+ * Shoot-on-the-move aiming: turret + flywheel + hood, aimed at the up CELL of our BIOBUZZ HIVE
+ * using Pedro Pathing's pose and velocity. It decides when a shot is ready ({@link #isReady()});
+ * feeding the ball is the {@link Feeder}'s job, and {@code RobotSys} ties the two together.
  *
- * <p>Each loop, in this order:
- * <ol>
- *   <li>Clear the hub bulk caches (OpMode).</li>
- *   <li>Set the drive command and call {@code follower.update()} exactly once (OpMode).</li>
- *   <li>Call {@link #update(boolean)}. It reads the mechanism sensors, solves the shot, drives the
- *       turret, flywheel and hood, and feeds a ball only when every readiness check passes.</li>
- * </ol>
+ * <p>Call {@link #update()} once per loop, after {@code follower.update()}. It reads the
+ * mechanism sensors, solves the shot and drives the turret, flywheel and hood.
  *
  * <p>Readiness ("gated" firing, as in FRC 254 / 6328): a valid solution (in range, correct
  * side of the HIVE, robot motion within limits), flywheel inside its speed window, hood settled,
@@ -37,7 +33,6 @@ public final class ShootOnTheMove {
     private final Turret turret;
     private final Flywheel flywheel;
     private final Hood hood;
-    private final Feeder feeder;
     private final ShotSolver solver = new ShotSolver();
     private final MotionEstimator motion = new MotionEstimator();
     private final HiveState hive;
@@ -52,22 +47,17 @@ public final class ShootOnTheMove {
     private long lastNanos;
     private double voltage = ShooterConstants.NOMINAL_VOLTAGE;
     private double nextVoltageRead = Double.NEGATIVE_INFINITY;
-    private boolean feeding;
-    private double feedEnd;
     private boolean ready;
-    /** The current feed was started by force fire, not by the checks. */
-    private boolean forced;
     private boolean storedZeroRejected;
     private int readyLoops;
-    private int shotsFired;
     private BallType nextBall = BallType.POLLEN;
+
     public ShootOnTheMove(HardwareMap hardwareMap, Follower follower, Alliance alliance) {
         this.follower = follower;
         this.alliance = alliance;
         turret = new Turret(hardwareMap);
         flywheel = new Flywheel(hardwareMap);
         hood = new Hood(hardwareMap);
-        feeder = new Feeder(hardwareMap);
         hive = new HiveState(alliance);
         voltageSensors = hardwareMap.getAll(VoltageSensor.class);
         // A homing from an earlier OpMode lives on in the encoder count; drop it if impossible.
@@ -76,9 +66,9 @@ public final class ShootOnTheMove {
     }
 
     /**
-     * Call every INIT loop, after clearing the bulk cache. Nothing moves unless
-     * {@link #homeTurret()} was pressed; homing then runs here (and finishes after START if
-     * START comes first).
+     * Call every INIT loop. The only thing that can move here is turret homing, and only after
+     * {@link #homeTurret()} was called (the home button); homing finishes after START if START
+     * comes first.
      */
     public void initLoop() {
         long nanos = System.nanoTime();
@@ -88,7 +78,7 @@ public final class ShootOnTheMove {
         turret.initUpdate(dt);
     }
 
-    /** Starts turret homing. Meant for a button in INIT: the turret moves to its zero. */
+    /** Starts turret homing (the home button): the turret moves to its zero, in INIT or after. */
     public void homeTurret() {
         storedZeroRejected = false;
         turret.startHoming();
@@ -98,7 +88,7 @@ public final class ShootOnTheMove {
     public String turretStatus() {
         if (turret.isHoming()) return "HOMING...";
         if (!turret.hasReference()) {
-            if (turret.resetFailed()) return "encoder reset did not read back as 0: press Y again";
+            if (turret.resetFailed()) return "encoder reset did not read back as 0: press Y in INIT";
             return storedZeroRejected
                     ? "encoder count impossible (hub reset?): press Y to home"
                     : "NOT HOMED since power-on, will not shoot: press Y to home";
@@ -107,23 +97,8 @@ public final class ShootOnTheMove {
                 turret.homeTimedOut() ? " (TIMED OUT: press Y again)" : "", Math.toDegrees(turret.angle()));
     }
 
-    /**
-     * Runs one control cycle. Call after {@code follower.update()}.
-     *
-     * @param fireRequested driver/autonomous wants to shoot; a ball is fed only when ready
-     */
-    public void update(boolean fireRequested) {
-        update(fireRequested, false);
-    }
-
-    /**
-     * Runs one control cycle. Call after {@code follower.update()}.
-     *
-     * @param fireRequested driver/autonomous wants to shoot; a ball is fed only when ready
-     * @param forceFire     feed regardless of EVERY check (aim, flywheel, hood, range, HIVE tip,
-     *                      flywheel armed). The turret, hood and flywheel still track the shot.
-     */
-    public void update(boolean fireRequested, boolean forceFire) {
+    /** Runs one aiming cycle. Call once per loop, after {@code follower.update()}. */
+    public void update() {
         long nanos = System.nanoTime();
         double now = nanos * 1e-9;
         double dt = lastNanos == 0L ? 0.0 : (nanos - lastNanos) * 1e-9;
@@ -162,24 +137,6 @@ public final class ShootOnTheMove {
         boolean readyNow = mechanismsReady && (override || solution.valid) && !hive.isPaused(now);
         readyLoops = readyNow ? readyLoops + 1 : 0;
         ready = readyLoops >= Math.max(1, ShooterConstants.READY_DEBOUNCE_LOOPS);
-
-        double pulse = ShooterConstants.FEEDER_PULSE_SEC;
-        if (pulse > 0.0) {
-            // Finish a started pulse even if the trigger is released, so a ball is never left half-fed.
-            if (feeding && now >= feedEnd) feeding = false;
-            if (!feeding && ((fireRequested && ready) || forceFire)) {
-                feeding = true;
-                feedEnd = now + pulse;
-                shotsFired++;
-                forced = forceFire && !(fireRequested && ready);
-            }
-        } else {
-            boolean wasFeeding = feeding;
-            feeding = (fireRequested && ready) || forceFire;
-            if (feeding && !wasFeeding) shotsFired++;
-            forced = feeding && !(fireRequested && ready);
-        }
-        feeder.set(feeding);
     }
 
     private void readVoltage(double now) {
@@ -194,12 +151,10 @@ public final class ShootOnTheMove {
         if (lowest != Double.POSITIVE_INFINITY) voltage = Math.max(9.0, Math.min(14.0, lowest));
     }
 
-    /** Stops every shooter output. */
+    /** Stops the flywheel and disarms. */
     public void stop() {
         armed = false;
-        feeding = false;
         flywheel.stop();
-        feeder.stop();
     }
 
     // ------------------------------------------------------------------ controls
@@ -292,14 +247,6 @@ public final class ShootOnTheMove {
         return ready;
     }
 
-    public boolean isFeeding() {
-        return feeding;
-    }
-
-    public int shotsFired() {
-        return shotsFired;
-    }
-
     public double turretAngle() {
         return turret.angle();
     }
@@ -320,8 +267,7 @@ public final class ShootOnTheMove {
         ShotSolution s = solution;
         telemetry.addData("Alliance / up CELL / ball", "%s / %s (tips %d) / %s",
                 alliance, hive.upCell(), hive.tips(), nextBall);
-        telemetry.addData("Armed / READY / feeding", "%b / %b / %b%s  (shots %d)",
-                armed, ready, feeding, feeding && forced ? " (FORCED)" : "", shotsFired);
+        telemetry.addData("Armed / READY", "%b / %b", armed, ready);
         if (s == null) return;
         telemetry.addData("Problems", s.describeProblems());
         telemetry.addData("Distance real / virtual", "%.1f / %.1f in", s.realDistance, s.virtualDistance);

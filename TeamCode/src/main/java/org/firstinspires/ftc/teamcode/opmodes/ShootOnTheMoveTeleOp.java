@@ -1,20 +1,11 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
-import com.pedropathing.follower.Follower;
-import com.pedropathing.follower.ManualDrive;
-import com.pedropathing.math.Pose;
-import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.pedro.Constants;
+import org.firstinspires.ftc.teamcode.RobotSys;
 import org.firstinspires.ftc.teamcode.shooter.Alliance;
-import org.firstinspires.ftc.teamcode.shooter.BioBuzzField;
-import org.firstinspires.ftc.teamcode.shooter.PoseStorage;
-import org.firstinspires.ftc.teamcode.shooter.ShootOnTheMove;
 import org.firstinspires.ftc.teamcode.shooter.ShooterConstants;
-
-import java.util.List;
 
 /**
  * Field-centric driving with an auto-aiming turret that shoots into the up CELL of our HIVE
@@ -22,15 +13,16 @@ import java.util.List;
  *
  * <p>INIT: gamepad1 X = blue, B = red (skipped if AUTO already stored a pose). Without a stored
  * pose the robot must start in the alliance reset corner (see BioBuzzField.resetPose).
- * gamepad1 Y = home the turret encoder (the turret moves to its zero). This is the only place
- * homing happens; a zero homed in an earlier OpMode (e.g. AUTO) is reused. Without a zero the
+ * gamepad1 Y = request turret homing. NOTHING moves in INIT: the turret goes to its zero right
+ * after START. Homing is only requested here; a zero homed in an earlier OpMode (e.g. AUTO) is reused. Without a zero the
  * turret points but never shoots.
  *
  * <p>gamepad1 (driver): left stick = drive (field-centric), right stick X = turn,
  * right bumper = slow, right trigger = fire (fires only when ready; rumbles when the driving is
  * what blocks the shot), left trigger = FORCE fire (bypasses every check, including flywheel
  * armed and gamepad2 hold fire), left bumper = arm/disarm the flywheel, back = reset pose (robot
- * in the reset corner).
+ * in the reset corner), A = intake on/off (it always runs during launches too), X held = intake
+ * reverse (clears a jam).
  *
  * <p>gamepad2 (operator): Y = our HIVE tipped (switch CELL), X = undo a TIP, B = next ball
  * POLLEN/NECTAR (only if SHOOTS_NECTAR), left bumper = hold fire, dpad left/right = aim trim -/+0.5 deg,
@@ -38,67 +30,42 @@ import java.util.List;
  */
 @TeleOp(name = "Shoot On The Move", group = "BioBuzz")
 public class ShootOnTheMoveTeleOp extends LinearOpMode {
-    private static final double SLOW_SCALE = 0.4;
     private static final double AIM_TRIM_STEP_DEG = 0.5;
     private static final double DISTANCE_TRIM_STEP_IN = 1.0;
     private static final int RUMBLE_MS = 150;
-    /** Telemetry is rebuilt and sent this often; the Driver Hub shows about 4 updates/s anyway. */
+    /**
+     * Telemetry is rebuilt and sent this often; the Driver Hub shows about 4 updates/s anyway.
+     */
     private static final long TELEMETRY_PERIOD_NANOS = 100_000_000L;
 
     @Override
     public void runOpMode() {
-        List<LynxModule> hubs = hardwareMap.getAll(LynxModule.class);
-        for (LynxModule hub : hubs) {
-            hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
-        }
-
-        Follower follower = Constants.create(hardwareMap);
-        if (follower == null) {
-            telemetry.addLine("Pedro is not configured: pedro/Constants.create() returned null.");
-            telemetry.addLine("Run the Pedro tuners and fill in Constants.java first.");
-            telemetry.update();
-            waitForStart();
-            return;
-        }
-
-        boolean fromAuto = PoseStorage.hasData;
-        Alliance alliance = fromAuto ? PoseStorage.alliance : Alliance.RED;
-
-        for (LynxModule hub : hubs) hub.clearBulkCache();
-        ShootOnTheMove shooter = new ShootOnTheMove(hardwareMap, follower, alliance);
-        if (fromAuto) {
-            follower.setPose(new Pose(PoseStorage.x, PoseStorage.y, PoseStorage.heading));
-            if (PoseStorage.upCell != null) shooter.setUpCell(PoseStorage.upCell);
-        } else {
-            follower.setPose(resetPose(alliance));
-        }
+        RobotSys robot = new RobotSys(hardwareMap, Alliance.RED);
+        boolean fromAuto = robot.restorePoseFromStorage();
+        if (!fromAuto) robot.resetPoseToCorner();
 
         while (opModeInInit()) {
-            for (LynxModule hub : hubs) hub.clearBulkCache();
-            if (!fromAuto) {
-                Alliance chosen = gamepad1.x ? Alliance.BLUE : gamepad1.b ? Alliance.RED : alliance;
-                if (chosen != alliance) {
-                    alliance = chosen;
-                    shooter.setAlliance(alliance);
-                    follower.setPose(resetPose(alliance));
-                }
+//            if (!fromAuto) {
+            Alliance chosen = gamepad1.x ? Alliance.BLUE : gamepad1.b ? Alliance.RED : robot.alliance();
+            if (chosen != robot.alliance()) {
+                robot.setAlliance(chosen);
+                robot.resetPoseToCorner();
             }
-            if (gamepad1.yWasPressed()) shooter.homeTurret();
-            shooter.initLoop();
-
-            telemetry.addData("Alliance", "%s  %s", alliance,
+//            }
+            if (gamepad1.yWasPressed()) robot.homeTurret();
+            robot.initLoop();
+            telemetry.addData("Alliance", "%s  %s", robot.alliance(),
                     fromAuto ? "(from previous OpMode)" : "(gamepad1 X = blue, B = red)");
             telemetry.addData("Start pose", fromAuto
                     ? "stored by previous OpMode (restart the app to clear)"
                     : "reset corner: place the robot there");
-            telemetry.addData("Up CELL", shooter.upCell());
-            telemetry.addData("Turret (gamepad1 Y = home)", shooter.turretStatus());
+            telemetry.addData("Up CELL", robot.upCell());
+            telemetry.addData("Turret (gamepad1 Y = home)", robot.turretStatus());
             telemetry.update();
             idle();
         }
         if (isStopRequested()) return;
 
-        shooter.resetMotion();
         long nextRumbleNanos = 0L;
         long nextTelemetryNanos = 0L;
         long lastLoopNanos = 0L;
@@ -117,55 +84,39 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
             }
             lastLoopNanos = loopStart;
 
-            for (LynxModule hub : hubs) hub.clearBulkCache();
-
-            // Drive: sticks are in the driver's frame (+forward away from our wall, +left), which
-            // fieldCentric rotates into the robot frame.
-            double scale = gamepad1.right_bumper ? SLOW_SCALE : 1.0;
-            double forward = -gamepad1.left_stick_y * scale;
-            double left = -gamepad1.left_stick_x * scale;
-            double turn = -gamepad1.right_stick_x * scale;
-            follower.manual(ManualDrive.fieldCentric(forward, left, turn,
-                    follower.pose().heading(), BioBuzzField.driverHeadingOffset(alliance)));
-            follower.update();
+            // Drive: sticks are in the driver's frame (+forward away from our wall, +left).
+            robot.drive(-gamepad1.left_stick_y, -gamepad1.left_stick_x,
+                    -gamepad1.right_stick_x);
 
             // Each WasPressed() call reports a press once, so read each button only once per loop.
-            if (gamepad1.leftBumperWasPressed()) shooter.toggleArmed();
-            if (gamepad1.backWasPressed()) {
-                follower.setPose(resetPose(alliance));
-                shooter.resetMotion();
-            }
-            if (gamepad2.yWasPressed()) shooter.reportHiveTip();
-            if (gamepad2.xWasPressed()) shooter.undoHiveTip();
+            if (gamepad1.leftBumperWasPressed()) robot.toggleArmed();
+            if (gamepad1.backWasPressed()) robot.resetPoseToCorner();
+            if (gamepad1.aWasPressed()) robot.toggleIntake();
+            robot.setIntakeReverse(gamepad1.x);
+
+            if (gamepad2.yWasPressed()) robot.reportHiveTip();
+            if (gamepad2.xWasPressed()) robot.undoHiveTip();
             if (gamepad2.bWasPressed() && ShooterConstants.SHOOTS_NECTAR)
-                shooter.setNextBall(shooter.nextBall().other());
-            if (gamepad2.aWasPressed()) {
-                shooter.solver().aimTrimRad = 0.0;
-                shooter.solver().distanceTrimIn = 0.0;
-            }
-            if (gamepad2.dpadLeftWasPressed())
-                shooter.solver().aimTrimRad -= Math.toRadians(AIM_TRIM_STEP_DEG);
-            if (gamepad2.dpadRightWasPressed())
-                shooter.solver().aimTrimRad += Math.toRadians(AIM_TRIM_STEP_DEG);
-            if (gamepad2.dpadUpWasPressed())
-                shooter.solver().distanceTrimIn += DISTANCE_TRIM_STEP_IN;
-            if (gamepad2.dpadDownWasPressed())
-                shooter.solver().distanceTrimIn -= DISTANCE_TRIM_STEP_IN;
+                robot.setNextBall(robot.nextBall().other());
+            if (gamepad2.aWasPressed()) robot.clearTrims();
+            if (gamepad2.dpadLeftWasPressed()) robot.addAimTrimDeg(-AIM_TRIM_STEP_DEG);
+            if (gamepad2.dpadRightWasPressed()) robot.addAimTrimDeg(AIM_TRIM_STEP_DEG);
+            if (gamepad2.dpadUpWasPressed()) robot.addDistanceTrimIn(DISTANCE_TRIM_STEP_IN);
+            if (gamepad2.dpadDownWasPressed()) robot.addDistanceTrimIn(-DISTANCE_TRIM_STEP_IN);
 
             boolean fire = gamepad1.right_trigger > 0.5 && !gamepad2.left_bumper;
             // Force fire: feeds no matter what the checks say (even with the flywheel off).
             boolean force = gamepad1.left_trigger > 0.5;
-            shooter.update(fire, force);
+            robot.update();
+            robot.shoot(fire, force);
+
             // Tell the driver when a held shot is blocked by their driving (wrong side or angle to
             // the CELL, too fast): crossing the face of the CELL usually fixes it.
             long nowNanos = System.nanoTime();
-            if (fire && shooter.isArmed() && shooter.isBlockedByDriving() && nowNanos >= nextRumbleNanos) {
+            if (fire && robot.isArmed() && robot.isBlockedByDriving() && nowNanos >= nextRumbleNanos) {
                 gamepad1.rumble(RUMBLE_MS);
                 nextRumbleNanos = nowNanos + 2L * RUMBLE_MS * 1_000_000L;
             }
-
-            Pose pose = follower.pose();
-            PoseStorage.save(pose.x(), pose.y(), pose.heading(), alliance, shooter.upCell());
 
             // Building telemetry costs CPU every time, so only do it every TELEMETRY_PERIOD.
             if (loopStart >= nextTelemetryNanos) {
@@ -176,18 +127,10 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
                 loopSumMs = 0.0;
                 loopWorstMs = 0.0;
                 loopCount = 0;
-                telemetry.addData("Pose", "x %.1f  y %.1f  h %.1f deg", pose.x(), pose.y(), Math.toDegrees(pose.heading()));
-                telemetry.addData("Trims", "aim %.1f deg, distance %.0f in",
-                        Math.toDegrees(shooter.solver().aimTrimRad), shooter.solver().distanceTrimIn);
-                shooter.addTelemetry(telemetry);
+                robot.addTelemetry(telemetry);
                 telemetry.update();
             }
         }
-        shooter.stop();
-    }
-
-    private static Pose resetPose(Alliance alliance) {
-        double[] p = BioBuzzField.resetPose(alliance);
-        return new Pose(p[0], p[1], p[2]);
+        robot.stop();
     }
 }

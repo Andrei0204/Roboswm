@@ -30,8 +30,9 @@ import java.util.Locale;
 public class FlywheelTuner extends LinearOpMode {
     @Override
     public void runOpMode() {
-        List<LynxModule> hubs = hardwareMap.getAll(LynxModule.class);
-        for (LynxModule hub : hubs) hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
+        for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
         Flywheel flywheel = new Flywheel(hardwareMap);
         Feeder feeder = new Feeder(hardwareMap);
         List<VoltageSensor> voltageSensors = hardwareMap.getAll(VoltageSensor.class);
@@ -55,7 +56,6 @@ public class FlywheelTuner extends LinearOpMode {
         String lastShot = "fire with the right trigger";
 
         while (opModeIsActive()) {
-            for (LynxModule hub : hubs) hub.clearBulkCache();
             double now = getRuntime();
             if (now >= nextVoltageRead) {
                 nextVoltageRead = now + ShooterConstants.VOLTAGE_READ_PERIOD_SEC;

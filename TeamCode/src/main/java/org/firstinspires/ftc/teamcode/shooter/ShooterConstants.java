@@ -35,6 +35,10 @@ public final class ShooterConstants {
     public static String HOOD_SERVO_NAME = "hood";
     /** Feeder/transfer that pushes a ball into the flywheel: a motor or a CR servo. */
     public static String FEEDER_NAME = "feeder";
+    /** Gate servo between the feeder and the launcher. */
+    public static String GATE_SERVO_NAME = "gate";
+    /** Intake motor that collects balls into the feeder. */
+    public static String INTAKE_MOTOR_NAME = "intake";
 
     // ------------------------------------------------------------------ robot geometry
     /**
@@ -159,6 +163,17 @@ public final class ShooterConstants {
     public static boolean HOOD_SET_PWM_RANGE = false;
     public static double HOOD_PWM_MIN_US = 500.0;
     public static double HOOD_PWM_MAX_US = 2500.0;
+
+    // ------------------------------------------------------------------ intake
+    /** Intake power when collecting; make it negative if the intake spins the wrong way. MEASURE. */
+    public static double INTAKE_POWER = 1.0;
+
+    // ------------------------------------------------------------------ gate
+    /** Gate servo positions. MEASURE with "Hood & Feeder Test". */
+    public static double GATE_CLOSED_POSITION = 0.20;
+    public static double GATE_OPEN_POSITION = 0.60;
+    /** Wait after commanding the gate open before the feeder may push a ball. MEASURE. */
+    public static double GATE_OPEN_DELAY_SEC = 0.15;
 
     // ------------------------------------------------------------------ feeder
     public static double FEEDER_FIRE_POWER = 1.0;
