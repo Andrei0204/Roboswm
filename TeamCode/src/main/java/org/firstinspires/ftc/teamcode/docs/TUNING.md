@@ -1,12 +1,12 @@
-# Shooter tuning guide
+`#` Shooter tuning guide
 
-How to tune the BIOBUZZ shoot-on-the-move robot: Pedro Pathing 3, Axon servo turret with
+How to tune the BIOBUZZ shoot-on-the-move robot: Pedro Pathing 3, continuous-rotation servo turret with
 external encoder, flywheel, hood and feeder. **Do the steps in order.** Each one relies on the
 ones before it: a perfect shot table is useless if the turret zero is wrong, and lead tuning is
 useless if the table is wrong.
 
 ## How to change a value
-
+ 
 Every number is a `public static` field in `ShooterConstants.java` or `BioBuzzField.java`. Edit
 the field, then redeploy the app (Run in Android Studio). No live dashboard is installed. Panels
 or FTC Dashboard could be added later; all fields are already public static.
@@ -23,13 +23,13 @@ Ground rules:
 | 0 | Before you start | – | Robot Configuration names | every device found at INIT |
 | 1 | Pedro Pathing | Pedro AutoTune, *Shoot On The Move* telemetry | `pedro/Constants.java` | pose and velocity signs correct, 24 in drive reads 24 ± 0.5 |
 | 2 | Field frame and reset pose | *Shoot On The Move* | `RED_RESET_*` | pose correct at a known tile corner |
-| 3 | Turret servo and encoder | *Turret Servo Setup* | `TURRET_*` | sweep check within 2%, homing works |
+| 3 | Turret servo and encoder | *Turret Servo Setup* | `TURRET_*` | encoder sign/mount correct, reset button works |
 | 4 | Flywheel | *Flywheel Tuner* | `FLYWHEEL_*` | back at speed quickly after every shot |
 | 5 | Hood and feeder | *Hood & Feeder Test*, *Flywheel Tuner* | `HOOD_*`, `FEEDER_*` | hood never hits a stop; one ball per pulse |
 | 6 | HIVE aim points | tape measure / CAD | `BioBuzzField` | telemetry distance matches the tape |
 | 7 | Shot table | *Shooter Calibration* | `SHOT_TABLE_POLLEN` | 5/5 still shots at every row |
 | 8 | Still-shot checks | *Shoot On The Move* | trims, `MAX_APPROACH_ANGLE_DEG` | scores from every spot you want to shoot from |
-| 9 | Turret lag and latency | *Shoot On The Move* (spin tests) | `TURRET_SERVO_LEAD_SEC`, `LOOKAHEAD_SEC` | no miss bias while spinning |
+| 9 | Turret lag and latency | *Shoot On The Move* (spin tests) | `TURRET_KV`, `TURRET_KP`, `LOOKAHEAD_SEC` | no miss bias while spinning |
 | 10 | Moving shots | *Shoot On The Move* (drive-bys) | `LEAD_DRAG_COEFF`, ToF column | no bias while strafing or driving in and out |
 | 11 | Gates and limits | *Shoot On The Move* | tolerances, `MAX_SHOT_*`, filters | moving hit rate meets your target |
 | 12 | HIVE tips | *Shoot On The Move* | `HIVE_TIP_PAUSE_SEC` | never fires into a tipping HIVE |
@@ -43,7 +43,7 @@ Ground rules:
 
 | Device | Type in Robot Configuration | Constant (default name) |
 |---|---|---|
-| Turret Axon MAX | Servo | `TURRET_SERVO_NAMES` (`turret`) |
+| Turret servo (continuous, used as Servo: 0.5 = stop) | Servo | `TURRET_SERVO_NAMES` (`turret`) |
 | Turret encoder | Motor on the port whose encoder slot it uses | `TURRET_ENCODER_NAME` (`turretEncoder`) |
 | Flywheel motor(s); the first has the encoder | Motor | `FLYWHEEL_MOTOR_NAMES` (`flywheel`) |
 | Hood servo | Servo | `HOOD_SERVO_NAME` (`hood`) |
@@ -53,7 +53,7 @@ Ground rules:
 | Intake servo (3 positions) | Servo | `INTAKE_SERVO_NAME` (`intakeServo`) |
 
 The turret encoder must **not** be on a Pedro dead-wheel port, and no code of yours may reset
-that port. Homing resets it, and that briefly stops any motor plugged into the same port, so use
+that port. The reset button zeroes it, and that briefly stops any motor plugged into the same port, so use
 a free port if you can.
 
 **Bring:**
@@ -124,38 +124,39 @@ right side against the audience wall, facing +x.
 
 Tool: **Turret Servo Setup** (no Pedro needed).
 
-1. Check the defaults first:
-   - `TURRET_SET_PWM_RANGE = true` gives the Axon's full 500–2500 µs travel. If you change it
-     later, redo this whole step.
-   - `TURRET_ENCODER_TICKS_PER_REV` is 8192 for a REV Through Bore.
-2. Jog with dpad left/right (hold right bumper for fine steps). Use a square against the frame
-   for the angles.
+1. `TURRET_ENCODER_TICKS_PER_REV` is 8192 for a REV Through Bore. The CR servo has no position,
+   so the encoder is the only feedback: it must be wired and named `TURRET_ENCODER_NAME`.
+2. Hold dpad left/right to turn the turret (right bumper = slow). **Dpad left must turn it
+   counter-clockwise** seen from above; if not, flip that servo in `TURRET_SERVO_REVERSED`.
+   Use a square against the frame for the angles.
    - turret shooting **straight forward** → press **A**
    - turret exactly **90° to the robot's left** (counter-clockwise) → press **B**
-3. Paste the four printed lines into `ShooterConstants`:
-   - `TURRET_SERVO_POSITION_AT_ZERO`
-   - `TURRET_DEG_PER_SERVO_UNIT`: expect about 299, from ~350° × the 0.855 gearing. Far off
-     means a wrong angle or a slipping gear.
+3. Paste the two printed lines into `ShooterConstants`:
    - `TURRET_ENCODER_SIGN`
    - `TURRET_ENCODER_REVS_PER_TURRET_REV`: 1.000 means the encoder is on the turret shaft,
      2.923 on the 24T/26T shaft, 1.169 on the servo shaft. Anything else means the ticks per
      rev or the mounting are wrong.
-4. Redeploy and run it again. Dpad up goes to zero, and the turret must point straight forward.
-5. **Limits.** Press dpad up (turret to zero), then **A**, so *Encoder angle from A* reads from
-   straight forward. Jog slowly to each end of safe travel (cables, frame, hard stops). Set
-   `TURRET_MIN_DEG` / `TURRET_MAX_DEG` from that angle, minus about 3° margin.
-6. Press **Y** to sweep end to end. The encoder span must be within **2%** of the expected
-   span. A negative percentage means the encoder sign is wrong. Otherwise redo A/B.
-7. **Turret offset.** Measure the turret's rotation axis from the robot center:
+4. **Limits.** Redeploy, turn the turret straight forward and press **A**, so *Encoder angle
+   from A* reads from forward. Turn slowly to each end of safe travel (cables, frame). Set
+   `TURRET_MIN_DEG` / `TURRET_MAX_DEG` from that angle, minus about 3° margin. These soft
+   limits are the only thing keeping the turret off its cables: the servo never stops itself.
+5. **Gains** (*Shoot On The Move*, turret homed). Start with `TURRET_KP` and watch *Turret
+   target / set / encoder*:
+   - `TURRET_KS`: raise until the turret just creeps in to a 3° error instead of stalling.
+   - `TURRET_KP`: raise until it settles fast, lower if it oscillates.
+   - `TURRET_KD`: raise if it overshoots.
+   - `TURRET_DEADBAND_DEG`: raise to about half the backlash if it hunts when still.
+   - `TURRET_KV` is tuned in step 9.
+6. **Turret offset.** Measure the turret's rotation axis from the robot center:
    - `TURRET_OFFSET_X_IN`, + forward
    - `TURRET_OFFSET_Y_IN`, + left
 
    This matters while the robot spins: at 3 rad/s a 5 in offset is a 15 in/s error.
-8. **Homing check** (*Shoot On The Move*):
-   - In INIT, press **gamepad1 Y**. The turret goes to zero and INIT shows "homed, encoder angle
-     ~0.0". Nothing else moves in INIT.
-   - Stop and start the OpMode again. It should already say "homed": the count carried over.
-   - Power-cycle the robot. It must say "NOT HOMED since power-on".
+7. **Homing check** (*Shoot On The Move*):
+   - The hub resets the encoder when an OpMode ends, so every OpMode assumes **0 ticks = 0°**:
+     point the turret straight forward before INIT.
+   - If it is not forward, turn it by hand (servo stopped), then in INIT press **gamepad1 Y**
+     (*Turret Servo Setup*: **X**). INIT shows "encoder angle ~0.0". Nothing moves in INIT.
 
 ---
 
@@ -222,6 +223,7 @@ After that the limits are **not** applied, so move in small steps.
    - Exactly one ball must leave.
    - The ball doesn't fully leave → raise `FEEDER_PULSE_SEC`.
    - Two leave → lower it.
+   - Balls come out too fast/jammed together → raise `FEEDER_GAP_SEC` (rest between balls, normal and force fire alike).
    - If balls creep into the flywheel while idle, set `FEEDER_IDLE_POWER` slightly negative
      (about −0.1).
 
@@ -250,8 +252,7 @@ from the manual's figures, about ±1 in.
 
 Tool: **Shooter Calibration**. Steps 1–6 must be done.
 
-1. In INIT, choose the alliance (X blue / B red) and press **Y** to home the turret: it won't
-   fire unhomed. Start with the robot in the reset corner, or with a pose from AUTO.
+1. In INIT, choose the alliance (X blue / B red) with the turret straight forward (or press **Y** to reset the encoder). Start with the robot in the reset corner, or with a pose from AUTO.
 2. Press **left bumper** to arm the flywheel.
 3. For each distance from about **16 to 88 in**, every 8–12 in (only distances you can really
    shoot from):
@@ -298,9 +299,8 @@ Trims reset when the OpMode restarts, so put the real fix in the constants.
 Tool: **Shoot On The Move**. Park about 50 in from the CELL and spin slowly in place at a steady
 rate (small right-stick input, about 60–90°/s). Do it in both directions.
 
-1. **`TURRET_SERVO_LEAD_SEC`** (no shooting). Watch *Turret error / allowed* and *Turret ff
-   rate*.
-   - Error has the **same sign** as the ff rate (the turret lags): raise the lead by 0.01 s.
+1. **`TURRET_KV`** (no shooting). Watch *Turret error / allowed* and *Turret ff rate*.
+   - Error has the **same sign** as the ff rate (the turret lags): raise `TURRET_KV` by 10%.
    - **Opposite** sign: lower it.
    - Done when the error averages under 1° while spinning.
 2. **`LOOKAHEAD_SEC`** (now shoot while spinning). The turret tracks its target from step 1, so
@@ -348,10 +348,15 @@ quickly. The drivers should cross the face instead.
   - Keep `VELOCITY_FILTER_SEC = 0` unless the velocity visibly jumps.
 - **`READY_DEBOUNCE_LOOPS`.** Use 2–3; raise it if single bad loops cause misses.
 - **`AIM_MARGIN_IN`.** Keep it at 2 in. The opponent's CELL is only ~5.5 in away (G417).
-- **Turret correction.** Only touch it if needed:
+- **Turret gains.** Only touch them if needed:
 
 | Symptom | Fix |
 |---|---|
+| Turret buzzes or hunts when still | raise `TURRET_DEADBAND_DEG` to half the backlash, or lower `TURRET_KP` / `TURRET_KS` |
+| Overshoots the target | raise `TURRET_KD` or lower `TURRET_KP` |
+| Slow to settle on target | raise `TURRET_KP` or `TURRET_KS` |
+
+---|---|
 | Turret buzzes or hunts when still | raise `TURRET_P_DEADBAND_DEG` to half the backlash, or lower `TURRET_ENCODER_KP` (must stay < 1) |
 | Slow to settle on target | `TURRET_CORRECTION_GAIN` up to 6 (simulated stable to 6) |
 | *correction* sits near ±8° | servo map is off: redo step 3 |
@@ -378,12 +383,13 @@ quickly. The drivers should cross the face instead.
 
 **Before each match:**
 1. Battery ≥ 12.8 V. Turret free to move.
-2. AUTO INIT: choose the alliance, press **gamepad1 Y**, and wait for "homed, encoder angle
-   ~0.0". Your AUTO OpMode needs the same INIT code as *Shoot On The Move*: build a `RobotSys`,
+2. AUTO INIT: choose the alliance, turret straight forward (or press **gamepad1 Y** to reset the
+   encoder there; INIT shows "encoder angle ~0.0"). Your AUTO OpMode needs the same INIT code as *Shoot On The Move*: build a `RobotSys`,
    call `robot.initLoop()` every INIT loop, and call `robot.homeTurret()` on Y.
 3. Place the robot exactly on the start pose.
-4. TeleOp INIT: the turret should already say "homed". If it says NOT HOMED, press Y. Press
-   **A** to put all servos in their start positions (and set `HOOD_START_POSITION` once).
+4. TeleOp INIT: the encoder resets when AUTO ends, so the turret must be straight forward again
+   (or press Y). Press
+   **A** to put all servos in their start positions (the turret just stops; set `HOOD_START_POSITION` once).
 
 **After any power cycle:** home again, or the turret will not shoot.
 
@@ -393,10 +399,10 @@ quickly. The drivers should cross the face instead.
 
 | Symptom | Look at |
 |---|---|
-| Won't fire at all | *Problems* line; turret not homed; flywheel not *at speed*; `HOOD_SECONDS_PER_FULL_RANGE` too large. Gamepad1 left trigger (force fire) bypasses every check |
-| Turret points the wrong way | `TURRET_SERVO_POSITION_AT_ZERO`, `TURRET_DEG_PER_SERVO_UNIT`, `TURRET_ENCODER_SIGN` (step 3) |
+| Won't fire at all | *Problems* line; encoder not zeroed (turret was not forward at INIT: press Y); flywheel not *at speed*; `HOOD_SECONDS_PER_FULL_RANGE` too large. Gamepad1 left trigger (force fire) bypasses every check |
+| Turret points the wrong way | `TURRET_SERVO_REVERSED`, `TURRET_ENCODER_SIGN`, or the homing pose (step 3) |
 | "DEAD ZONE: rotate the robot" | target behind the turret's travel: turn the robot |
-| Misses only while spinning | `TURRET_SERVO_LEAD_SEC`, `LOOKAHEAD_SEC`, `TURRET_OFFSET_*` (steps 3, 9) |
+| Misses only while spinning | `TURRET_KV`, `LOOKAHEAD_SEC`, `TURRET_OFFSET_*` (steps 3, 9) |
 | Misses only while strafing | `LEAD_DRAG_COEFF` (step 10) |
 | Misses only while driving in/out | ToF column (step 10) |
 | Second ball of a burst short | flywheel recovery (step 4); `FEEDER_PULSE_SEC` |

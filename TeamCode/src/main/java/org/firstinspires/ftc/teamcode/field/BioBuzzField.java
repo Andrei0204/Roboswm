@@ -34,7 +34,7 @@ public final class BioBuzzField {
      */
     public static double FIELD_CENTER_IN = 72.0;
     /** Field center to each HIVE centerline, toward that alliance's wall (centerlines are 25.5 in apart). MEASURE. */
-    public static double HIVE_SIDE_OFFSET_IN = 12.75;
+    public static double HIVE_SIDE_OFFSET_IN = 15;
     /** Field center to a CELL opening center along the audience-rear axis (manual figures give 16.5-18.1). MEASURE. */
     public static double CELL_OPENING_AXIAL_OFFSET_IN = 17.3;
     /** CELL opening center height above the tiles. Informational: the shot table is calibrated against it. */
@@ -52,8 +52,8 @@ public final class BioBuzzField {
      * the field center (the field is rotationally symmetric, not mirrored). MEASURE: x is half the
      * robot length and y half the robot width for an 18 in square robot.
      */
-    public static double RED_RESET_X_IN = 9.0;
-    public static double RED_RESET_Y_IN = 9.0;
+    public static double RED_RESET_X_IN = 6.9;
+    public static double RED_RESET_Y_IN = 6.9;
     public static double RED_RESET_HEADING_DEG = 0.0;
 
     /** Aim point x (Pedro, inches) of an alliance's CELL opening center. */

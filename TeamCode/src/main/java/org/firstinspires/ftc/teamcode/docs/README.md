@@ -29,7 +29,7 @@ rationale is in `reports/FTC turret shooting while moving.md`.
    - turret error under `atan(allowance / distance)`, where allowance =
      (20 in · cos(approach) − ball diameter)/2 − `AIM_MARGIN_IN`, measured by the turret's
      external encoder, with the encoder rate matching the commanded rate
-   - turret homed, and its target inside the reachable range (not in the dead zone behind it)
+   - turret encoder not mid-reset, and its target inside the reachable range (not in the dead zone behind it)
    - no HIVE TIP in the last `HIVE_TIP_PAUSE_SEC`
 
 ## Code layout
@@ -43,8 +43,8 @@ All under `src/main/java/org/firstinspires/ftc/teamcode/`.
 | | `ShotSolver`, `ShotSolution` | the math above (no hardware, testable) |
 | | `MotionEstimator` | velocity smoothing and acceleration estimate (Pedro 3 has none) |
 | | `InterpolatingTable`, `BallType` | shot-table lookup; POLLEN / NECTAR |
-| `subsystems` | `Turret` | turret hardware: Axon servo(s) out, external encoder in |
-| | `TurretController`, `TurretMath` | homing, servo lead, encoder correction, encoder aim check, angle↔position map, range handling (no hardware, testable) |
+| `subsystems` | `Turret` | turret hardware: CR servo power out, external encoder in |
+| | `TurretController`, `TurretMath` | homing, encoder PD + feedforward, encoder aim check, soft limits, range handling (no hardware, testable) |
 | | `Flywheel` | kS + kV feedforward + P, full power when far below target |
 | | `Hood` | servo hood with a travel-time model for "settled" |
 | | `Feeder` | motor or CR servo transfer: one pulse per ball, separate from the shooter |
@@ -57,7 +57,7 @@ All under `src/main/java/org/firstinspires/ftc/teamcode/`.
 | `config` | `ShooterConstants` | every tunable number (MEASURE = placeholder), both shot tables |
 | `opmodes` | `ShootOnTheMoveTeleOp` | match TeleOp |
 | | `ShooterCalibration` | builds the shot tables |
-| | `TurretServoSetup` | finds the turret servo zero and scale, encoder sign and mounting, and limits |
+| | `TurretServoSetup` | finds the turret encoder sign and mounting, and limits |
 | | `FlywheelTuner` | measures flywheel kS/kV (open loop) and shot recovery (closed loop) |
 | | `HoodFeederTest` | finds hood, gate and intake servo positions, checks feeder direction |
 | `pedro` | `Constants`, tuners | Pedro Pathing setup |
@@ -72,8 +72,8 @@ and HIVE tips. It names the OpMode, the constants and the pass check for every s
 
 ## Controls (TeleOp)
 
-- **INIT:** gamepad1 X = blue, B = red, Y = home the turret, A = move all servos to their
-  start position (turret forward, hood start, gate closed, intake servo INIT). Those buttons are
+- **INIT:** gamepad1 X = blue, B = red, Y = reset the turret encoder (0 ticks = 0 deg is assumed), A = move all servos to their
+  start position (turret stopped, hood start, gate closed, intake servo INIT). Those buttons are
   the only movement in INIT; the flywheel, feeder and intake motor stay still until START.
 
 - **Driver (gamepad1):**

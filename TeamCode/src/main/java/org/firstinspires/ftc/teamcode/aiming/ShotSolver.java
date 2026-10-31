@@ -136,8 +136,8 @@ public final class ShotSolver {
         double lookup = s.virtualDistance + distanceTrimIn;
         s.flywheelRpm = rpmTables[ball.ordinal()].get(lookup);
         s.hoodPosition = hoodTables[ball.ordinal()].get(lookup);
-        if (lookup < tof.minX()) s.problems |= ShotSolution.TOO_CLOSE;
-        if (lookup > tof.maxX()) s.problems |= ShotSolution.TOO_FAR;
+//        if (lookup < tof.minX()) s.problems |= ShotSolution.TOO_CLOSE;
+//        if (lookup > tof.maxX()) s.problems |= ShotSolution.TOO_FAR;
 
         // 5. Turret feedforward: central difference of the robot-relative aim along the predicted
         //    motion (FRC 604's approach). Unlike the simple v/d line-of-sight formula, this

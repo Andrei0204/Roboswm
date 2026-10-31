@@ -22,8 +22,8 @@ import org.firstinspires.ftc.teamcode.robot.RobotSys;
  * (frames from leaving the hood to crossing the opening, divided by the frame rate) and put it
  * in the 4th column.
  *
- * <p>INIT: gamepad1 X = blue, B = red, Y = home the turret (the only INIT movement, and only on this button; needed once per app session;
- * the turret will not shoot until it is homed).
+ * <p>INIT: gamepad1 X = blue, B = red, Y = reset the turret encoder to 0 where the turret is now
+ * (0 ticks is assumed to be 0 deg, straight forward, since the count resets when an OpMode ends).
  * <p>gamepad1: sticks = drive (field-centric), left bumper = arm/disarm flywheel,
  * right trigger = fire one ball (needs flywheel at speed, hood settled, turret aimed),
  * dpad up/down = rpm +/-50, dpad left/right = hood -/+0.01 (hold left trigger for fine steps),

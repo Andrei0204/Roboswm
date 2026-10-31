@@ -28,7 +28,7 @@ import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
  * <p>All hubs use bulk caching AUTO: the first read of a value in a loop does one bulk read, and
  * reading the SAME value again forces another one. Every value here is read once per loop.
  *
- * <p>Nothing moves in INIT except turret homing, and only when the home button asks for it: no
+ * <p>Nothing moves in INIT (the turret reset only stops it and zeroes the encoder): no
  * other servo or motor is commanded until the first {@link #update} after START. INIT loop:
  * {@link #initLoop()} every loop, {@link #homeTurret()} on the home button and
  * {@link #servosToStart()} on the start-position button.
@@ -73,8 +73,8 @@ public final class RobotSys {
     }
 
     /**
-     * INIT button: puts every servo in its start position for TeleOp: turret straight forward,
-     * hood start, gate closed, intake servo INIT. The encoder is not zeroed (homing does that),
+     * INIT button: puts every servo in its start position for TeleOp: turret stopped,
+     * hood start, gate closed, intake servo INIT. The encoder is not zeroed (the reset button does that),
      * and the intake motor, flywheel and feeder do not move.
      */
     public void servosToStart() {
@@ -84,7 +84,7 @@ public final class RobotSys {
         intakeServo.update();
     }
 
-    /** Starts turret homing (the home button): the turret moves to its zero and the encoder is zeroed. */
+    /** Reset button: zeroes the turret encoder where the turret is now (0 ticks = 0 deg). */
     public void homeTurret() {
         shooter.homeTurret();
     }
@@ -128,8 +128,7 @@ public final class RobotSys {
      * counter-clockwise. Call before {@link #update}.
      */
     public void drive(double forward, double left, double turn) {
-        follower.manual(ManualDrive.fieldCentric(forward, left, turn,
-                follower.pose().heading(), BioBuzzField.driverHeadingOffset(alliance)));
+        follower.manual(forward, left, turn); //TODO
     }
 
     /**

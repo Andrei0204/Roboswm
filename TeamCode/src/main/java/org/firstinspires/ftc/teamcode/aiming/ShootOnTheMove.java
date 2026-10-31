@@ -35,7 +35,6 @@ import org.firstinspires.ftc.teamcode.subsystems.Turret;
  */
 public final class ShootOnTheMove {
     /** A turret zero is dropped if the encoder count puts the turret this far outside its travel. */
-    private static final double STORED_ZERO_MARGIN_DEG = 15.0;
 
     private final Follower follower;
     private final Turret turret;
@@ -56,7 +55,6 @@ public final class ShootOnTheMove {
     private double voltage = ShooterConstants.NOMINAL_VOLTAGE;
     private double nextVoltageRead = Double.NEGATIVE_INFINITY;
     private boolean ready;
-    private boolean storedZeroRejected;
     private int readyLoops;
     private BallType nextBall = BallType.POLLEN;
 
@@ -68,9 +66,6 @@ public final class ShootOnTheMove {
         hood = new Hood(hardwareMap);
         hive = new HiveState(alliance);
         voltageSensors = hardwareMap.getAll(VoltageSensor.class);
-        // A homing from an earlier OpMode lives on in the encoder count; drop it if impossible.
-        turret.readSensors();
-        storedZeroRejected = !turret.checkZero(Math.toRadians(STORED_ZERO_MARGIN_DEG));
     }
 
     /**
@@ -86,29 +81,23 @@ public final class ShootOnTheMove {
         turret.initUpdate(dt);
     }
 
-    /** Moves the turret and hood servos to their start positions (the INIT "servos to start" button). */
+    /** Moves the hood servo to its start position and stops the turret (the INIT "servos to start" button). */
     public void servosToStart() {
-        turret.moveToStartPosition();
+        turret.stop();
         hood.setPosition(ShooterConstants.HOOD_START_POSITION, 0.0);
     }
 
-    /** Starts turret homing (the home button): the turret moves to its zero, in INIT or after. */
+    /** Resets the turret encoder (the reset button): zeroes the count where the turret is now. */
     public void homeTurret() {
-        storedZeroRejected = false;
         turret.startHoming();
     }
 
     /** One-line turret status for INIT telemetry. */
     public String turretStatus() {
         if (turret.isHoming()) return "HOMING...";
-        if (!turret.hasReference()) {
-            if (turret.resetFailed()) return "encoder reset did not read back as 0: press Y in INIT";
-            return storedZeroRejected
-                    ? "encoder count impossible (hub reset?): press Y to home"
-                    : "NOT HOMED since power-on, will not shoot: press Y to home";
-        }
-        return String.format(java.util.Locale.US, "homed%s, encoder angle %.1f deg",
-                turret.homeTimedOut() ? " (TIMED OUT: press Y again)" : "", Math.toDegrees(turret.angle()));
+        if (turret.resetFailed()) return "encoder reset did not read back as 0: press Y in INIT";
+        return String.format(java.util.Locale.US, "encoder angle %.1f deg (0 ticks = 0 deg, press Y in INIT to reset)%s",
+                Math.toDegrees(turret.angle()), turret.homeTimedOut() ? " (TIMED OUT: press Y again)" : "");
     }
 
     /** Runs one aiming cycle. Call once per loop, after {@code follower.update()}. */
@@ -295,8 +284,8 @@ public final class ShootOnTheMove {
                     turret.isReachable() ? "" : "  (DEAD ZONE: rotate the robot)",
                     turret.homeTimedOut() ? "  (homing timed out: home again in INIT)" : "");
         }
-        telemetry.addData("Turret servo / correction / rate", "%.3f / %.2f deg / %.0f deg/s",
-                turret.servoPosition(), Math.toDegrees(turret.correction()), Math.toDegrees(turret.rate()));
+        telemetry.addData("Turret power / rate", "%.2f / %.0f deg/s",
+                turret.servoPower(), Math.toDegrees(turret.rate()));
         telemetry.addData("Turret error / allowed", "%.2f / %.2f deg (miss allowance %.1f in)",
                 Math.toDegrees(turret.error()), Math.toDegrees(s.allowedAimError), s.lateralAllowance);
         telemetry.addData("Turret ff rate", "%.1f deg/s", Math.toDegrees(s.turretRate));

@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
 import org.firstinspires.ftc.teamcode.aiming.ShotSolver;
 import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 
-/** Turret angle wrapping, servo mapping and encoder scaling. Pure math, testable off the robot. */
+/** Turret angle wrapping, soft limits and encoder scaling. Pure math, testable off the robot. */
 public final class TurretMath {
     private static final double TWO_PI = 2.0 * Math.PI;
 
@@ -42,28 +42,14 @@ public final class TurretMath {
         return Math.abs(ShotSolver.normalizeSigned(setpoint - target)) < 1e-6;
     }
 
-    /** Servo position for a turret angle (rad). */
-    public static double positionForAngle(double angle) {
-        return ShooterConstants.TURRET_SERVO_POSITION_AT_ZERO
-                + Math.toDegrees(angle) / ShooterConstants.TURRET_DEG_PER_SERVO_UNIT;
-    }
-
-    /** Turret angle (rad) for a servo position. */
-    public static double angleForPosition(double position) {
-        return Math.toRadians((position - ShooterConstants.TURRET_SERVO_POSITION_AT_ZERO)
-                * ShooterConstants.TURRET_DEG_PER_SERVO_UNIT);
-    }
-
-    /** Lowest reachable angle (rad): the soft limit or the servo's end of travel. */
+    /** Lowest reachable angle (rad): the soft limit. */
     public static double minAngle() {
-        double servoMin = Math.min(angleForPosition(0.0), angleForPosition(1.0));
-        return Math.max(Math.toRadians(ShooterConstants.TURRET_MIN_DEG), servoMin);
+        return Math.toRadians(ShooterConstants.TURRET_MIN_DEG);
     }
 
-    /** Highest reachable angle (rad): the soft limit or the servo's end of travel. */
+    /** Highest reachable angle (rad): the soft limit. */
     public static double maxAngle() {
-        double servoMax = Math.max(angleForPosition(0.0), angleForPosition(1.0));
-        return Math.min(Math.toRadians(ShooterConstants.TURRET_MAX_DEG), servoMax);
+        return Math.toRadians(ShooterConstants.TURRET_MAX_DEG);
     }
 
     /** Turret radians per encoder tick, including the encoder sign. */

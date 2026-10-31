@@ -10,13 +10,16 @@ import org.firstinspires.ftc.teamcode.config.ShooterConstants;
  *
  * <p>{@link #update} feeds in pulses of FEEDER_PULSE_SEC (one ball each); a new pulse starts only
  * when the previous one has ended and a feed is still requested. A started pulse always finishes,
- * so a ball is never left half-fed. With FEEDER_PULSE_SEC <= 0 it feeds for as long as requested.
+ * so a ball is never left half-fed. After each pulse the feeder rests FEEDER_GAP_SEC before the
+ * next one, for normal and forced fire alike. With FEEDER_PULSE_SEC <= 0 it feeds for as long as requested.
  */
 public final class Feeder {
     private final DcMotorSimple actuator;
     private double lastPower = Double.NaN;
     private boolean feeding;
     private double feedEnd;
+    /** Earliest time the next pulse may start (end of the previous pulse + the gap). */
+    private double nextStart;
     private int feeds;
 
     public Feeder(HardwareMap hardwareMap) {
@@ -39,8 +42,11 @@ public final class Feeder {
         boolean started = false;
         double pulse = ShooterConstants.FEEDER_PULSE_SEC;
         if (pulse > 0.0) {
-            if (feeding && now >= feedEnd) feeding = false;
-            if (!feeding && requested) {
+            if (feeding && now >= feedEnd) {
+                feeding = false;
+                nextStart = feedEnd + Math.max(0.0, ShooterConstants.FEEDER_GAP_SEC);
+            }
+            if (!feeding && requested && now >= nextStart) {
                 feeding = true;
                 feedEnd = now + pulse;
                 started = true;
@@ -80,6 +86,7 @@ public final class Feeder {
 
     public void stop() {
         feeding = false;
+        nextStart = 0.0;
         lastPower = 0.0;
         actuator.setPower(0.0);
     }

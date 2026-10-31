@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.config;
 
+import com.acmerobotics.dashboard.config .Config;
+
 import org.firstinspires.ftc.teamcode.aiming.BallType;
 
 /**
@@ -15,13 +17,17 @@ import org.firstinspires.ftc.teamcode.aiming.BallType;
  * The fields are public static and non-final so a live-tuning dashboard can edit them.
  * After editing a shot table at runtime, call {@code ShotSolver.reloadTables()}.
  */
-public final class ShooterConstants {
+@Config
+public final class  ShooterConstants {
     private ShooterConstants() {}
 
     // ------------------------------------------------------------------ hardware names
-    /** Positional servos (servo mode) that turn the turret, all sent the same position. */
-    public static String[] TURRET_SERVO_NAMES = {"turret"};
-    /** One entry per turret servo: true reverses that servo (e.g. a mirrored second servo). */
+    /** Continuous-rotation servos, configured as plain Servos: position 0.5 = stop, 0.5 + 0.5 * power. */
+    public static String[] TURRET_SERVO_NAMES = {"turp"};
+    /**
+     * One entry per turret servo: true reverses that servo. Set so POSITIVE power turns the
+     * turret counter-clockwise (the direction in which the encoder angle increases).
+     */
     public static boolean[] TURRET_SERVO_REVERSED = {false};
     /**
      * Motor port (configured as a motor in the Robot Configuration) whose encoder slot has the
@@ -29,69 +35,57 @@ public final class ShooterConstants {
      * the count from AUTO to TeleOp, so nothing else may reset this port. Never use a Pedro
      * dead-wheel port (Pedro resets those).
      */
-    public static String TURRET_ENCODER_NAME = "turretEncoder";
+    public static String TURRET_ENCODER_NAME = "FR";
     /** Flywheel motors. The FIRST one must have the flywheel encoder plugged in. */
-    public static String[] FLYWHEEL_MOTOR_NAMES = {"flywheel"};
+    public static String[] FLYWHEEL_MOTOR_NAMES = {"launcherp"};
     /** One entry per flywheel motor: true reverses that motor so +power spins the shot forward. */
-    public static boolean[] FLYWHEEL_MOTOR_REVERSED = {false};
-    public static String HOOD_SERVO_NAME = "hood";
+    public static boolean[] FLYWHEEL_MOTOR_REVERSED = {true};
+    public static String HOOD_SERVO_NAME = "hoodp";
     /** Feeder/transfer that pushes a ball into the flywheel: a motor or a CR servo. */
-    public static String FEEDER_NAME = "feeder";
+    public static String FEEDER_NAME = "transferp";
     /** Gate servo between the feeder and the launcher. */
-    public static String GATE_SERVO_NAME = "gate";
+    public static String GATE_SERVO_NAME = "gatep";
     /** Intake motor that collects balls into the feeder. */
     public static String INTAKE_MOTOR_NAME = "intake";
     /** Intake servo with three positions (see IntakeServo.Mode, which holds the positions). */
-    public static String INTAKE_SERVO_NAME = "intakeServo";
+    public static String INTAKE_SERVO_NAME = "intakes";
 
     // ------------------------------------------------------------------ robot geometry
     /**
      * Turret pivot position relative to the point Pedro's pose describes (the robot center
      * used for your localizer pod offsets). MEASURE. +x forward, +y left, inches.
      */
-    public static double TURRET_OFFSET_X_IN = 0.0;
+    public static double TURRET_OFFSET_X_IN = -2.94;
     public static double TURRET_OFFSET_Y_IN = 0.0;
 
-    // ------------------------------------------------------------------ turret (servo + encoder)
+    // ------------------------------------------------------------------ turret (CR servo + encoder)
     /*
      * Turret angles are robot-relative, counter-clockwise positive seen from above, and 0 means
-     * shooting straight forward. The Axon (servo mode) moves the turret through this map:
-     *   position = TURRET_SERVO_POSITION_AT_ZERO + angleDeg / TURRET_DEG_PER_SERVO_UNIT
-     * and the external encoder measures where the turret really is. Find the numbers with the
-     * "Turret Servo Setup" OpMode.
+     * shooting straight forward. The continuous-rotation servo only takes a power; the external
+     * encoder is the turret's only position feedback, so the controller closes the loop on it:
+     *   power = KP * error + KD * rateError + KV * targetRate + KS * sign(error)
+     * Find the encoder numbers with the "Turret Servo Setup" OpMode.
      */
-    /** Servo position at which the turret shoots straight forward. MEASURE. */
-    public static double TURRET_SERVO_POSITION_AT_ZERO = 0.5;
+    /** Power per rad of angle error. TUNE: raise until it settles fast without oscillating. */
+    public static double TURRET_KP = 0.2;
+    /** Power per rad/s of rate error (damping). Raise if the turret overshoots. */
+    public static double TURRET_KD = 0.015;
+    /** Power per rad/s of target rate: the feedforward that tracks a moving target. TUNE with the spin test. */
+    public static double TURRET_KV = 0.05;
+    /** Power that just breaks friction; added in the direction of the error outside the deadband. */
+    public static double TURRET_KS = 0.04;
+    /** Limit on the turret power (0..1). */
+    public static double TURRET_MAX_POWER = 1.0;
+    /** Inside this error the turret is left unpowered, so it does not hunt on gear backlash. */
+    public static double TURRET_DEADBAND_DEG = 5;
     /**
-     * Turret gearing: Axon MAX 60T drives 24T, compounded with 26T driving the 76T turret gear.
-     * Two meshes, so the turret turns the same way as the servo, at 0.855 deg per servo deg.
-     */
-    public static final double TURRET_GEAR_RATIO = (60.0 / 24.0) * (26.0 / 76.0);
-    /**
-     * Turret degrees per 1.0 of servo position, counter-clockwise positive. Negative if a higher
-     * position turns the turret clockwise. Default: about 350 deg of Axon MAX travel over the
-     * 500-2500 us range (ServoCity listing) times the gearing, about 299 deg. MEASURE with
-     * "Turret Servo Setup" and paste the measured value here.
-     */
-    public static double TURRET_DEG_PER_SERVO_UNIT = 350.0 * TURRET_GEAR_RATIO;
-    /**
-     * Soft limits (cables, frame, hard stops), robot-relative. The turret is also kept inside
-     * the angles the servo can reach (positions 0 to 1, about +-150 deg here). A servo turret
-     * covers under 360 deg, so targets in the gap behind it are unreachable and never fired at.
+     * Soft limits (cables, frame), robot-relative. A continuous servo has no end of travel, so
+     * these alone keep the turret off its cables: power pushing past them is cut. A turret
+     * limited to under 360 deg has a dead zone behind it where targets are never fired at.
      * MEASURE.
      */
-    public static double TURRET_MIN_DEG = -145.0;
-    public static double TURRET_MAX_DEG = 145.0;
-    /**
-     * The servo's internal position loop trails a moving command. Commanding
-     * angle + rate * this cancels that lag (velocity feedforward for a servo). Tune with the spin
-     * test: 0.02-0.08 s is typical.
-     */
-    public static double TURRET_SERVO_LEAD_SEC = 0.04;
-    /** Widen the turret servo pulse range to TURRET_PWM_MIN_US..MAX_US, the Axon's full travel. */
-    public static boolean TURRET_SET_PWM_RANGE = true;
-    public static double TURRET_PWM_MIN_US = 500.0;
-    public static double TURRET_PWM_MAX_US = 2500.0;
+    public static double TURRET_MIN_DEG = -179.0;
+    public static double TURRET_MAX_DEG = 179.0;
 
     /** External encoder counts per encoder-shaft revolution (REV Through Bore = 8192). MEASURE. */
     public static double TURRET_ENCODER_TICKS_PER_REV = 8192.0;
@@ -100,35 +94,17 @@ public final class ShooterConstants {
      * on the 76T turret shaft = 1.0; on the 24T/26T compound shaft = 76/26 = 2.923; on the servo
      * shaft = (24/60)*(76/26) = 1.169. "Turret Servo Setup" checks this. MEASURE.
      */
-    public static double TURRET_ENCODER_REVS_PER_TURRET_REV = 1.0;
+    public static double TURRET_ENCODER_REVS_PER_TURRET_REV = 2.92;
     /** +1 or -1 so the encoder angle INCREASES when the turret turns counter-clockwise. MEASURE. */
     public static int TURRET_ENCODER_SIGN = 1;
     /**
-     * Homing (gamepad1 Y in INIT): the turret moves to the servo's zero position, waits until the
-     * encoder shows it is still, and the encoder count is reset to 0 there.
+     * Homing (gamepad1 Y in INIT): with the turret turned by hand to point straight forward, waits
+     * until the encoder shows it is still, and the encoder count is reset to 0 there.
      */
     public static double TURRET_HOME_STILL_DEG_PER_SEC = 3.0;
     public static double TURRET_HOME_STILL_SEC = 0.15;
     public static double TURRET_HOME_MIN_SEC = 0.25;
     public static double TURRET_HOME_TIMEOUT_SEC = 1.5;
-    /**
-     * Encoder correction of the servo: while aiming at a slowly moving target, the error the
-     * encoder sees (backlash, load, servo map error) is integrated into a trim on the servo
-     * command, at this rate (1/s). 0 disables it. The trim is limited to MAX_CORRECTION and only
-     * learns inside the error window and below the rate limit, so it never fights a fast swing.
-     */
-    public static double TURRET_CORRECTION_GAIN = 4.0;
-    public static double TURRET_MAX_CORRECTION_DEG = 8.0;
-    public static double TURRET_CORRECTION_WINDOW_DEG = 6.0;
-    public static double TURRET_CORRECTION_MAX_RATE_DEG_PER_SEC = 30.0;
-    /**
-     * Proportional encoder correction inside the window, also while tracking: the servo is
-     * commanded an extra KP * error. It cuts tracking error from servo-scale error by about
-     * 1 / (1 + KP). Keep it below 1: the outer loop is then stable for any servo lag. Errors
-     * under the deadband (gear backlash) are ignored so the turret does not hunt.
-     */
-    public static double TURRET_ENCODER_KP = 0.5;
-    public static double TURRET_P_DEADBAND_DEG = 0.3;
     /** A shot needs the encoder rate within this of the commanded rate (no swinging through). */
     public static double TURRET_RATE_TOLERANCE_DEG_PER_SEC = 40.0;
     /** Clamp on the turret rate feedforward (rad/s); it grows without bound right next to the HIVE. */
@@ -138,15 +114,15 @@ public final class ShooterConstants {
     /** Encoder counts per revolution of the shaft the flywheel encoder is on (goBILDA 5203 1:1 = 28). */
     public static double FLYWHEEL_TICKS_PER_REV = 28.0;
     /** Feedforward: power = KS + KV * rpm (at NOMINAL_VOLTAGE). MEASURE with the calibration OpMode. */
-    public static double FLYWHEEL_KS = 0.03;
-    public static double FLYWHEEL_KV = 1.0 / 6000.0;
+    public static double FLYWHEEL_KS = 0.09;
+    public static double FLYWHEEL_KV = 0.00023076;
     /** Proportional power per rpm of error. */
-    public static double FLYWHEEL_KP = 0.0006;
+    public static double FLYWHEEL_KP = 0.005;
     /** When more than this far BELOW target (e.g. right after a shot), apply full power. */
-    public static double FLYWHEEL_BANG_BANG_RPM = 300.0;
+    public static double FLYWHEEL_BANG_BANG_RPM = 150;
     /** The flywheel counts as "at speed" inside [target - BELOW, target + ABOVE]. */
-    public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 60.0;
-    public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 120.0;
+    public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 100;
+    public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 100;
     /** Speed held while the shooter is not armed (0 = coast). */
     public static double FLYWHEEL_IDLE_RPM = 0.0;
     /**
@@ -157,12 +133,13 @@ public final class ShooterConstants {
 
     // ------------------------------------------------------------------ hood
     /** Hood servo position limits; keep them inside the mechanism's hard stops. MEASURE. */
-    public static double HOOD_MIN_POSITION = 0.10;
-    public static double HOOD_MAX_POSITION = 0.90;
+    public static double HOOD_MIN_POSITION = 0.24
+            ;
+    public static double HOOD_MAX_POSITION = 0.36;
     /** Hood position for the start of TeleOp (the "servos to start" button in INIT). MEASURE. */
-    public static double HOOD_START_POSITION = 0.10;
+    public static double HOOD_START_POSITION = 0.34;
     /** Seconds the servo needs to sweep the full 0..1 position range under load. MEASURE. */
-    public static double HOOD_SECONDS_PER_FULL_RANGE = 0.60;
+    public static double HOOD_SECONDS_PER_FULL_RANGE = 0.375;
     /** Extra wait after the modeled arrival before the hood counts as settled. */
     public static double HOOD_SETTLE_SEC = 0.04;
     /** Set true to widen the servo pulse range to HOOD_PWM_MIN_US..HOOD_PWM_MAX_US (Axon / goBILDA). */
@@ -182,7 +159,7 @@ public final class ShooterConstants {
     public static double GATE_OPEN_DELAY_SEC = 0.15;
 
     // ------------------------------------------------------------------ feeder
-    public static double FEEDER_FIRE_POWER = 1.0;
+    public static double FEEDER_FIRE_POWER = 1;
     /** Power when not firing (0, or slightly negative to hold balls back). */
     public static double FEEDER_IDLE_POWER = 0.0;
     /**
@@ -190,6 +167,12 @@ public final class ShooterConstants {
      * the next one. Set to 0 or less for continuous feeding while ready.
      */
     public static double FEEDER_PULSE_SEC = 0.15;
+    /**
+     * Rest between two pulses (balls), counted from the end of a pulse. It applies to normal and
+     * force fire alike, so balls leave one at a time even when a button is held. Ignored when
+     * FEEDER_PULSE_SEC <= 0.
+     */
+    public static double FEEDER_GAP_SEC = 0.25;
 
     // ------------------------------------------------------------------ shot solver
     /**
@@ -197,7 +180,7 @@ public final class ShooterConstants {
      * mechanism response lag. NOT the feed delay: the mechanisms keep tracking until the ball
      * leaves. Tune 0.02 - 0.10 s.
      */
-    public static double LOOKAHEAD_SEC = 0.05;
+    public static double LOOKAHEAD_SEC = 0.06;
     /** Use filtered acceleration in the pose prediction (p + v*t + a*t^2/2). */
     public static boolean USE_ACCELERATION = true;
     /** First-order low-pass time constants for Pedro's velocity and for the derived acceleration (0 = off). */
@@ -212,7 +195,7 @@ public final class ShooterConstants {
      * is driving) the lead is too big, so raise it; if they land AHEAD, lower it (it may go
      * slightly negative). FRC 6328 used 0.375 for their 2026 ball.
      */
-    public static double LEAD_DRAG_COEFF = 0.0;
+    public static double LEAD_DRAG_COEFF = 0.4;
     public static int SOLVER_MAX_ITERATIONS = 10;
     public static double SOLVER_TOLERANCE_SEC = 0.001;
 
@@ -264,16 +247,14 @@ public final class ShooterConstants {
      * so the lead is roughly right until you measure it with slow-motion video.
      */
     public static double[][] SHOT_TABLE_POLLEN = {
-            {16.0, 2400.0, 0.80, 0.505},
-            {24.0, 2500.0, 0.75, 0.528},
-            {32.0, 2600.0, 0.70, 0.550},
-            {40.0, 2700.0, 0.65, 0.572},
-            {48.0, 2800.0, 0.60, 0.592},
-            {56.0, 2900.0, 0.55, 0.612},
-            {64.0, 3000.0, 0.50, 0.631},
-            {72.0, 3100.0, 0.45, 0.650},
-            {80.0, 3200.0, 0.40, 0.668},
-            {88.0, 3300.0, 0.35, 0.686},
+            {27,1820,0.302,0.5},
+            {35.7,1870,0.292,0.52},
+            {43,1890,0.296,0.54},
+            {48,1870,0.292,0.57},
+            {57,1950,0.27,0.62},
+            {61,1980,0.278,0.7},
+
+
     };
     public static double[][] SHOT_TABLE_NECTAR = {
             {16.0, 2500.0, 0.80, 0.505},

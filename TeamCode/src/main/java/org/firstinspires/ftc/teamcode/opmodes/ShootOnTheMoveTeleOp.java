@@ -14,11 +14,10 @@ import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
  *
  * <p>INIT: gamepad1 X = blue, B = red (skipped if AUTO already stored a pose). Without a stored
  * pose the robot must start in the alliance reset corner (see BioBuzzField.resetPose).
- * gamepad1 Y = home the turret (the turret moves to its zero; a zero homed in an earlier OpMode,
- * e.g. AUTO, is reused). gamepad1 A = move all servos to their start position (turret forward,
- * hood start, gate closed, intake servo INIT). Those two buttons are the only movement in INIT;
- * everything else stays still until START. Without a homed zero the turret points but never
- * shoots.
+ * The turret encoder resets when an OpMode ends, so 0 ticks is assumed to be 0 deg: start with the
+ * turret straight forward, or press gamepad1 Y (reset the encoder where the turret is now).
+ * gamepad1 A = hood start, gate closed, intake servo INIT, turret stopped. Everything else stays
+ * still until START.
  *
  * <p>gamepad1 (driver): left stick = drive (field-centric), right stick X = turn,
  * right bumper = slow, right trigger = fire (fires only when ready; rumbles when the driving is
