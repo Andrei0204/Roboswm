@@ -11,7 +11,8 @@ apply plugin: 'com.android.application'
 // before doing so.
 
 // Custom definitions may go here
-
+// there should be 2 or 3 more lines that start with 'apply plugin:' here
+apply plugin: 'dev.frozenmilk.sinister.sloth.load'
 // Include common definitions from above.
 apply from: '../build.common.gradle'
 apply from: '../build.dependencies.gradle'
@@ -24,6 +25,19 @@ android {
     }
 }
 
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+        maven {
+            url "https://repo.dairy.foundation/releases"
+        }
+    }
+    dependencies {
+        classpath "dev.frozenmilk:Load:0.3.2"
+    }
+}
 dependencies {
+    implementation("com.acmerobotics.slothboard:dashboard:0.3.2+0.6.0")
     implementation project(':FtcRobotController')
 }

@@ -46,19 +46,50 @@ public final class ShotSolver {
     /** Distance trim added before the flywheel/hood lookup (in). Positive shoots farther. */
     public double distanceTrimIn = 0.0;
 
+    /** Hash of the SHOT_TABLE_* contents the lookup tables were last built from. */
+    private int tablesHash;
+
     public ShotSolver() {
         reloadTables();
     }
 
+    private static int shotTablesHash() {
+        return 31 * java.util.Arrays.deepHashCode(ShooterConstants.SHOT_TABLE_POLLEN)
+                + java.util.Arrays.deepHashCode(ShooterConstants.SHOT_TABLE_NECTAR);
+    }
+
+    /**
+     * Rebuilds the lookup tables when the SHOT_TABLE_* arrays were edited (e.g. in the dashboard).
+     * An edit that is not a valid table yet (unsorted distances, a missing column) keeps the old
+     * tables until the next change.
+     */
+    private void reloadTablesIfEdited() {
+        int hash = shotTablesHash();
+        if (hash == tablesHash) return;
+        try {
+            reloadTables();
+        } catch (RuntimeException e) {
+            tablesHash = hash;
+        }
+    }
+
     /** Rebuilds the lookup tables from the SHOT_TABLE_* arrays in {@link ShooterConstants}. */
     public void reloadTables() {
+        InterpolatingTable[] rpm = new InterpolatingTable[rpmTables.length];
+        InterpolatingTable[] hood = new InterpolatingTable[hoodTables.length];
+        InterpolatingTable[] tof = new InterpolatingTable[tofTables.length];
+        int hash = shotTablesHash();
         for (BallType ball : BallType.values()) {
             double[][] rows = ShooterConstants.shotTable(ball);
             int i = ball.ordinal();
-            rpmTables[i] = InterpolatingTable.fromColumns(rows, 0, 1);
-            hoodTables[i] = InterpolatingTable.fromColumns(rows, 0, 2);
-            tofTables[i] = InterpolatingTable.fromColumns(rows, 0, 3);
+            rpm[i] = InterpolatingTable.fromColumns(rows, 0, 1);
+            hood[i] = InterpolatingTable.fromColumns(rows, 0, 2);
+            tof[i] = InterpolatingTable.fromColumns(rows, 0, 3);
         }
+        System.arraycopy(rpm, 0, rpmTables, 0, rpm.length);
+        System.arraycopy(hood, 0, hoodTables, 0, hood.length);
+        System.arraycopy(tof, 0, tofTables, 0, tof.length);
+        tablesHash = hash;
     }
 
     public double tableMinDistance(BallType ball) {
@@ -105,6 +136,7 @@ public final class ShotSolver {
         ShotSolution s = solution;
         s.problems = 0;
         s.ballType = ball;
+        reloadTablesIfEdited();
         InterpolatingTable tof = tofTables[ball.ordinal()];
         boolean useAccel = ShooterConstants.USE_ACCELERATION;
         double axUsed = useAccel ? ax : 0.0;

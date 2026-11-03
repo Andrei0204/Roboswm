@@ -38,7 +38,7 @@ public class FlywheelTuner extends LinearOpMode {
         List<VoltageSensor> voltageSensors = hardwareMap.getAll(VoltageSensor.class);
 
         telemetry.addLine("Flywheel Tuner: START, then follow the on-screen help.");
-        telemetry.addLine("Keep hands clear of the flywheel.");
+        telemetry.addLine("Keep hands clear of the flywheel. ca idee gen");
         telemetry.update();
         waitForStart();
 

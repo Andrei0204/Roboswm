@@ -28,7 +28,8 @@ import org.firstinspires.ftc.teamcode.robot.RobotSys;
  * right trigger = fire one ball (needs flywheel at speed, hood settled, turret aimed),
  * dpad up/down = rpm +/-50, dpad left/right = hood -/+0.01 (hold left trigger for fine steps),
  * Y = load the current table values for this distance, B = switch target CELL,
- * X = switch ball type (only if SHOOTS_NECTAR), A = record a row, back = reset pose (robot in the reset corner).
+ * X = switch ball type (only if SHOOTS_NECTAR), A = record a row, back = reset pose (robot in the reset corner),
+ * right bumper (hold) = intake + transfer together (gate untouched), right stick button = gate toggle (press once = open, again = closed).
  */
 @TeleOp(name = "Shooter Calibration", group = "BioBuzz")
 public class ShooterCalibration extends LinearOpMode {
@@ -59,6 +60,8 @@ public class ShooterCalibration extends LinearOpMode {
         double rpm = 3000.0;
         double hood = 0.5;
         List<String> rows = new ArrayList<>();
+        boolean gateOpen = false;
+        boolean rightStickWasDown = false;
 
         while (opModeIsActive()) {
             robot.drive(-gamepad1.left_stick_y * 0.5, -gamepad1.left_stick_x * 0.5, -gamepad1.right_stick_x * 0.5);
@@ -74,7 +77,7 @@ public class ShooterCalibration extends LinearOpMode {
             if (gamepad1.dpadRightWasPressed()) hood += hoodStep;
             hood = Math.max(ShooterConstants.HOOD_MIN_POSITION, Math.min(ShooterConstants.HOOD_MAX_POSITION, hood));
             if (gamepad1.bWasPressed()) robot.setUpCell(robot.upCell().other());
-            if (gamepad1.xWasPressed() && ShooterConstants.SHOOTS_NECTAR) robot.setNextBall(robot.nextBall().other());
+            //if (gamepad1.xWasPressed() && ShooterConstants.SHOOTS_NECTAR) robot.setNextBall(robot.nextBall().other());//mod
             if (gamepad1.backWasPressed()) robot.resetPoseToCorner();
             ShotSolution s = robot.solution();
             BallType ball = robot.nextBall();
@@ -88,6 +91,10 @@ public class ShooterCalibration extends LinearOpMode {
 
             robot.setCalibrationOverride(rpm, hood);
             robot.update();
+            if (gamepad1.right_stick_button && !rightStickWasDown) gateOpen = !gateOpen;
+            rightStickWasDown = gamepad1.right_stick_button;
+            robot.setManualGateOpen(gateOpen);
+            robot.setManualFeed(gamepad1.right_bumper);
             robot.shoot(gamepad1.right_trigger > 0.5, false);
 
             s = robot.solution();
@@ -102,7 +109,7 @@ public class ShooterCalibration extends LinearOpMode {
             for (String row : rows) telemetry.addLine(row);
             robot.addTelemetry(telemetry);
             telemetry.update();
-        }
+        }76
         robot.stop();
     }
 }

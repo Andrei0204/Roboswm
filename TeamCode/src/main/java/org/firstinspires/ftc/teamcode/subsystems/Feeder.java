@@ -27,7 +27,7 @@ public final class Feeder {
         if (actuator instanceof DcMotor) {
             DcMotor motor = (DcMotor) actuator;
             motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         }
     }
 

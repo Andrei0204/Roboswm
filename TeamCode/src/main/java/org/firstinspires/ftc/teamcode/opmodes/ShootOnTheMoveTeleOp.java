@@ -20,7 +20,9 @@ import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
  * still until START.
  *
  * <p>gamepad1 (driver): left stick = drive (field-centric), right stick X = turn,
- * right bumper = slow, right trigger = fire (fires only when ready; rumbles when the driving is
+ * right bumper (HOLD) = intake + transfer together (gate untouched), right stick button = gate
+ * open/closed toggle (press once = open, again = closed; firing still opens it by itself),
+ * right trigger = fire (fires only when ready; rumbles when the driving is
  * what blocks the shot), left trigger = FORCE fire (bypasses every check, including flywheel
  * armed and gamepad2 hold fire), left bumper = arm/disarm the flywheel, back = reset pose (robot
  * in the reset corner), A = intake on/off (it always runs during launches too), X held = intake
@@ -77,6 +79,9 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
         double loopSumMs = 0.0;
         double loopWorstMs = 0.0;
         int loopCount = 0;
+        boolean intakeOn = false;          // A toggle for the intake alone
+        boolean gateOpen = false;          // right stick button toggle for the gate
+        boolean rightStickWasDown = false;
 
         while (opModeIsActive()) {
             // Loop time: full period from one loop start to the next.
@@ -96,11 +101,15 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
             // Each WasPressed() call reports a press once, so read each button only once per loop.
             if (gamepad1.leftBumperWasPressed()) robot.toggleArmed();
             if (gamepad1.backWasPressed()) robot.resetPoseToCorner();
-            if (gamepad1.aWasPressed()) robot.toggleIntake();
+            // A toggles the intake alone. Kept in a local variable (not robot.toggleIntake()) because
+            // setManualFeed() below also writes the intake's manual flag every loop.
+            if (gamepad1.aWasPressed()) intakeOn = !intakeOn;
             robot.setIntakeReverse(gamepad1.x);
-            if (gamepad1.dpadUpWasPressed()) robot.setIntakeMode(IntakeServo.Mode.COLLECT_ALL);
-            if (gamepad1.dpadLeftWasPressed()) robot.setIntakeMode(IntakeServo.Mode.COLLECT_POLLEN);
-            if (gamepad1.dpadDownWasPressed()) robot.setIntakeMode(IntakeServo.Mode.INIT);
+//            if (gamepad1.dpadUpWasPressed()) robot.setIntakeMode(IntakeServo.Mode.COLLECT_ALL);
+//            if (gamepad1.dpadLeftWasPressed()) robot.setIntakeMode(IntakeServo.Mode.COLLECT_POLLEN);
+//            if (gamepad1.dpadDownWasPressed()) robot.setIntakeMode(IntakeServo.Mode.INIT);  //mod
+
+
 
             if (gamepad2.yWasPressed()) robot.reportHiveTip();
             if (gamepad2.xWasPressed()) robot.undoHiveTip();
@@ -115,6 +124,16 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
             boolean fire = gamepad1.right_trigger > 0.5 && !gamepad2.left_bumper;
             // Force fire: feeds no matter what the checks say (even with the flywheel off).
             boolean force = gamepad1.left_trigger > 0.5;
+
+            // Right stick button: gate toggle (edge detected, one press = one change).
+            if (gamepad1.right_stick_button && !rightStickWasDown) gateOpen = !gateOpen;
+            rightStickWasDown = gamepad1.right_stick_button;
+            robot.setManualGateOpen(gateOpen);
+            // Right bumper (hold): intake + transfer together. The intake also stays on if A turned it on.
+            boolean collect = gamepad1.right_bumper;
+            robot.setManualFeed(collect);
+            robot.intake().setManual(collect || intakeOn);
+
             robot.update();
             robot.shoot(fire, force);
 

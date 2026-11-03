@@ -15,7 +15,7 @@ import org.firstinspires.ftc.teamcode.aiming.BallType;
  * hit the HIVE until they have been measured on your robot and field.
  *
  * The fields are public static and non-final so a live-tuning dashboard can edit them.
- * After editing a shot table at runtime, call {@code ShotSolver.reloadTables()}.
+ * Edited shot tables are picked up automatically by ShotSolver on the next solve.
  */
 @Config
 public final class  ShooterConstants {
@@ -69,7 +69,7 @@ public final class  ShooterConstants {
     /** Power per rad of angle error. TUNE: raise until it settles fast without oscillating. */
     public static double TURRET_KP = 0.2;
     /** Power per rad/s of rate error (damping). Raise if the turret overshoots. */
-    public static double TURRET_KD = 0.015;
+    public static double TURRET_KD = 0.018;
     /** Power per rad/s of target rate: the feedforward that tracks a moving target. TUNE with the spin test. */
     public static double TURRET_KV = 0.05;
     /** Power that just breaks friction; added in the direction of the error outside the deadband. */
@@ -115,11 +115,11 @@ public final class  ShooterConstants {
     public static double FLYWHEEL_TICKS_PER_REV = 28.0;
     /** Feedforward: power = KS + KV * rpm (at NOMINAL_VOLTAGE). MEASURE with the calibration OpMode. */
     public static double FLYWHEEL_KS = 0.09;
-    public static double FLYWHEEL_KV = 0.00023076;
+    public static double FLYWHEEL_KV = 0.00022076;
     /** Proportional power per rpm of error. */
     public static double FLYWHEEL_KP = 0.005;
     /** When more than this far BELOW target (e.g. right after a shot), apply full power. */
-    public static double FLYWHEEL_BANG_BANG_RPM = 150;
+    public static double FLYWHEEL_BANG_BANG_RPM = 50;
     /** The flywheel counts as "at speed" inside [target - BELOW, target + ABOVE]. */
     public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 100;
     public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 100;
@@ -149,30 +149,30 @@ public final class  ShooterConstants {
 
     // ------------------------------------------------------------------ intake
     /** Intake power when collecting; make it negative if the intake spins the wrong way. MEASURE. */
-    public static double INTAKE_POWER = 1.0;
+    public static double INTAKE_POWER = -1.0; //REVERSEINTAKE
 
     // ------------------------------------------------------------------ gate
     /** Gate servo positions. MEASURE with "Hood & Feeder Test". */
-    public static double GATE_CLOSED_POSITION = 0.20;
-    public static double GATE_OPEN_POSITION = 0.60;
+    public static double GATE_CLOSED_POSITION = 0.56;
+    public static double GATE_OPEN_POSITION = 0.44;
     /** Wait after commanding the gate open before the feeder may push a ball. MEASURE. */
     public static double GATE_OPEN_DELAY_SEC = 0.15;
 
     // ------------------------------------------------------------------ feeder
-    public static double FEEDER_FIRE_POWER = 1;
+    public static double FEEDER_FIRE_POWER = 1; //REVERSEFEEDER
     /** Power when not firing (0, or slightly negative to hold balls back). */
     public static double FEEDER_IDLE_POWER = 0.0;
     /**
      * Length of one feed pulse (one ball). After a pulse the shooter must be ready again before
      * the next one. Set to 0 or less for continuous feeding while ready.
      */
-    public static double FEEDER_PULSE_SEC = 0.15;
+    public static double FEEDER_PULSE_SEC =0 ;
     /**
      * Rest between two pulses (balls), counted from the end of a pulse. It applies to normal and
      * force fire alike, so balls leave one at a time even when a button is held. Ignored when
      * FEEDER_PULSE_SEC <= 0.
      */
-    public static double FEEDER_GAP_SEC = 0.25;
+    public static double FEEDER_GAP_SEC = 0;
 
     // ------------------------------------------------------------------ shot solver
     /**
@@ -180,7 +180,7 @@ public final class  ShooterConstants {
      * mechanism response lag. NOT the feed delay: the mechanisms keep tracking until the ball
      * leaves. Tune 0.02 - 0.10 s.
      */
-    public static double LOOKAHEAD_SEC = 0.06;
+    public static double LOOKAHEAD_SEC = 0.03;
     /** Use filtered acceleration in the pose prediction (p + v*t + a*t^2/2). */
     public static boolean USE_ACCELERATION = true;
     /** First-order low-pass time constants for Pedro's velocity and for the derived acceleration (0 = off). */
@@ -247,12 +247,9 @@ public final class  ShooterConstants {
      * so the lead is roughly right until you measure it with slow-motion video.
      */
     public static double[][] SHOT_TABLE_POLLEN = {
-            {27,1820,0.302,0.5},
-            {35.7,1870,0.292,0.52},
-            {43,1890,0.296,0.54},
-            {48,1870,0.292,0.57},
-            {57,1950,0.27,0.62},
-            {61,1980,0.278,0.7},
+
+
+
 
 
     };

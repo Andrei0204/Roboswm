@@ -45,6 +45,10 @@ public final class RobotSys {
     private Alliance alliance;
     /** The current feed was started by force fire, not by the checks. */
     private boolean forced;
+    /** A shot (normal or forced) was wanted in the last {@link #shoot} call. */
+    private boolean shotWanted;
+    private boolean manualGateOpen;
+    private boolean manualFeed;
 
     /**
      * Builds every subsystem. The pose is not set here: call {@link #setPose},
@@ -138,8 +142,8 @@ public final class RobotSys {
     public void update() {
         follower.update();
         shooter.update();
-        // "Launching" = the gate is open or a pulse is running; the intake always runs then.
-        intake.update(gate.wantsOpen() || feeder.isFeeding());
+        // While firing the intake pushes only during a feed pulse and rests in the gap between balls.
+        intake.update(feeder.isFeeding(), shotWanted && !feeder.isFeeding());
         intakeServo.update();
         Pose pose = follower.pose();
         PoseStorage.save(pose.x(), pose.y(), pose.heading(), alliance, shooter.upCell());
@@ -155,11 +159,26 @@ public final class RobotSys {
     public void shoot(boolean fire, boolean forceFire) {
         boolean normal = fire && shooter.isReady();
         boolean wanted = normal || forceFire;
+        shotWanted = wanted;
         // The gate stays open while a feed is wanted or a pulse is still running; the feeder
         // only starts a pulse once the gate is open.
-        gate.update(wanted || feeder.isFeeding());
+        gate.update(wanted || feeder.isFeeding() || manualGateOpen);
+        if (manualFeed && !wanted) {
+            feeder.set(true);
+            return;
+        }
         if (feeder.update(wanted && gate.isOpen())) forced = !normal;
         if (!feeder.isFeeding()) forced = false;
+    }
+
+    /** Tuning only: keep the gate open by hand (shoot() still opens it when firing). */
+    public void setManualGateOpen(boolean open) {
+        manualGateOpen = open;
+    }
+    /** Tuning only: while true, run the intake and the transfer together (the gate is not touched). */
+    public void setManualFeed(boolean on) {
+        manualFeed = on;
+        intake.setManual(on);
     }
 
     /** Stops the flywheel and the feeder, and closes the gate. */

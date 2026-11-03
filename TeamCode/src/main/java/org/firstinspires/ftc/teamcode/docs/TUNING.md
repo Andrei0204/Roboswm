@@ -6,7 +6,7 @@ ones before it: a perfect shot table is useless if the turret zero is wrong, and
 useless if the table is wrong.
 
 ## How to change a value
- 
+  
 Every number is a `public static` field in `ShooterConstants.java` or `BioBuzzField.java`. Edit
 the field, then redeploy the app (Run in Android Studio). No live dashboard is installed. Panels
 or FTC Dashboard could be added later; all fields are already public static.
