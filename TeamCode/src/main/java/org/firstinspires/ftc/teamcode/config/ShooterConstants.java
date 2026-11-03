@@ -119,10 +119,10 @@ public final class  ShooterConstants {
     /** Proportional power per rpm of error. */
     public static double FLYWHEEL_KP = 0.005;
     /** When more than this far BELOW target (e.g. right after a shot), apply full power. */
-    public static double FLYWHEEL_BANG_BANG_RPM = 50;
+    public static double FLYWHEEL_BANG_BANG_RPM = 10;
     /** The flywheel counts as "at speed" inside [target - BELOW, target + ABOVE]. */
-    public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 100;
-    public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 100;
+    public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 300; //am modificat de la 100
+    public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 300; //si aici
     /** Speed held while the shooter is not armed (0 = coast). */
     public static double FLYWHEEL_IDLE_RPM = 0.0;
     /**
@@ -166,13 +166,13 @@ public final class  ShooterConstants {
      * Length of one feed pulse (one ball). After a pulse the shooter must be ready again before
      * the next one. Set to 0 or less for continuous feeding while ready.
      */
-    public static double FEEDER_PULSE_SEC =0 ;
+    public static double FEEDER_PULSE_SEC =0.08;
     /**
      * Rest between two pulses (balls), counted from the end of a pulse. It applies to normal and
      * force fire alike, so balls leave one at a time even when a button is held. Ignored when
      * FEEDER_PULSE_SEC <= 0.
      */
-    public static double FEEDER_GAP_SEC = 0;
+    public static double FEEDER_GAP_SEC = 0.02;
 
     // ------------------------------------------------------------------ shot solver
     /**
@@ -213,7 +213,7 @@ public final class  ShooterConstants {
      */
     public static double MAX_APPROACH_ANGLE_DEG = 45.0;
     /** Every check must pass for this many consecutive loops before a ball is fed. */
-    public static int READY_DEBOUNCE_LOOPS = 2;
+    public static int READY_DEBOUNCE_LOOPS = 1;
     /**
      * Do not fire above these limits: latency, velocity noise and the constant-acceleration
      * prediction cause errors that grow with speed, turn rate and acceleration. Raise them as
@@ -248,6 +248,10 @@ public final class  ShooterConstants {
      */
     public static double[][] SHOT_TABLE_POLLEN = {
 
+            {35.7,1840,0.292,0.52},
+            {43,1850,0.296,0.54},
+
+            {48,2000,0.286,0.6}
 
 
 

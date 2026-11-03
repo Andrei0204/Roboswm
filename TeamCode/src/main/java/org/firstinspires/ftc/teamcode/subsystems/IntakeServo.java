@@ -17,9 +17,9 @@ public final class IntakeServo {
     /** The three positions. */
     public enum Mode {
         /** Stowed, as at the start of the match. */
-        INIT(0.10),
+        INIT(1),
         /** Collects every ball (POLLEN and NECTAR). */
-        COLLECT_ALL(0.50),
+        COLLECT_ALL(0.54),
         /** Collects POLLEN only. */
         COLLECT_POLLEN(0.75);
 

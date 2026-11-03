@@ -12,6 +12,7 @@ import org.firstinspires.ftc.teamcode.aiming.ShotSolution;
 import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 import org.firstinspires.ftc.teamcode.field.Alliance;
 import org.firstinspires.ftc.teamcode.robot.RobotSys;
+import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
 
 /**
  * Builds SHOT_TABLE_POLLEN and SHOT_TABLE_NECTAR. Park the robot STILL, head-on to the up CELL,
@@ -21,7 +22,7 @@ import org.firstinspires.ftc.teamcode.robot.RobotSys;
  * 15-80 in), for each ball type. Measure each row's time of flight with slow-motion video
  * (frames from leaving the hood to crossing the opening, divided by the frame rate) and put it
  * in the 4th column.
- *
+ * oprire
  * <p>INIT: gamepad1 X = blue, B = red, Y = reset the turret encoder to 0 where the turret is now
  * (0 ticks is assumed to be 0 deg, straight forward, since the count resets when an OpMode ends).
  * <p>gamepad1: sticks = drive (field-centric), left bumper = arm/disarm flywheel,
@@ -64,7 +65,7 @@ public class ShooterCalibration extends LinearOpMode {
         boolean rightStickWasDown = false;
 
         while (opModeIsActive()) {
-            robot.drive(-gamepad1.left_stick_y * 0.5, -gamepad1.left_stick_x * 0.5, -gamepad1.right_stick_x * 0.5);
+            robot.drive(-gamepad1.left_stick_y * 1, -gamepad1.left_stick_x * 1, -gamepad1.right_stick_x * 1);
 
             boolean fine = gamepad1.left_trigger > 0.5;
             double rpmStep = fine ? 10.0 : 50.0;
@@ -90,6 +91,7 @@ public class ShooterCalibration extends LinearOpMode {
             }
 
             robot.setCalibrationOverride(rpm, hood);
+            robot.setIntakeMode(IntakeServo.Mode.COLLECT_ALL); // always COLLECT_ALL in calibration
             robot.update();
             if (gamepad1.right_stick_button && !rightStickWasDown) gateOpen = !gateOpen;
             rightStickWasDown = gamepad1.right_stick_button;
@@ -109,7 +111,7 @@ public class ShooterCalibration extends LinearOpMode {
             for (String row : rows) telemetry.addLine(row);
             robot.addTelemetry(telemetry);
             telemetry.update();
-        }76
+        }
         robot.stop();
     }
 }
