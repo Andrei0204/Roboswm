@@ -98,6 +98,8 @@ public class ShooterCalibration extends LinearOpMode {
             robot.setManualGateOpen(gateOpen);
             robot.setManualFeed(gamepad1.right_bumper);
             robot.shoot(gamepad1.right_trigger > 0.5, false);
+            if (gamepad2.yWasPressed()) robot.reportHiveTip();
+            if (gamepad2.xWasPressed()) robot.undoHiveTip();
 
             s = robot.solution();
             ball = robot.nextBall();

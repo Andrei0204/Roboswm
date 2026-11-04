@@ -93,6 +93,7 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
                 loopCount++;
             }
             lastLoopNanos = loopStart;
+            robot.setIntakeMode(IntakeServo.Mode.COLLECT_ALL);
 
             // Drive: sticks are in the driver's frame (+forward away from our wall, +left).
             robot.drive(-gamepad1.left_stick_y, -gamepad1.left_stick_x,

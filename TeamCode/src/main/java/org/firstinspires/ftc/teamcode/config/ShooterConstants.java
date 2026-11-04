@@ -172,7 +172,7 @@ public final class  ShooterConstants {
      * force fire alike, so balls leave one at a time even when a button is held. Ignored when
      * FEEDER_PULSE_SEC <= 0.
      */
-    public static double FEEDER_GAP_SEC = 0.02;
+    public static double FEEDER_GAP_SEC = 0;
 
     // ------------------------------------------------------------------ shot solver
     /**
@@ -249,13 +249,10 @@ public final class  ShooterConstants {
     public static double[][] SHOT_TABLE_POLLEN = {
 
 //            {35.7,1840,0.292,0.52},
-//            {43,1850,0.296,0.54},
-            {32.2,1879,0.321,0.6},
-            {38.0, 1874,0.298,0.6},
-            {38.7,1878,0.297,0.6},
-            {45,1961, 0.29,0.6},
-            {48,2000,0.286,0.6},
-            {49.3,1900,0.286,0.6},
+            {27.0,1800,0.320,0.6},
+            {35.4,1750,0.310,0.6},
+            {45.1,1800,0.290,0.6},
+
 
 
 
