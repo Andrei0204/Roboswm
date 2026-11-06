@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -36,6 +38,7 @@ import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
 public class ShooterCalibration extends LinearOpMode {
     @Override
     public void runOpMode() {
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         RobotSys robot = new RobotSys(hardwareMap, Alliance.RED);
         boolean fromAuto = robot.restorePoseFromStorage();
         if (!fromAuto) robot.resetPoseToCorner();
@@ -103,6 +106,7 @@ public class ShooterCalibration extends LinearOpMode {
 
             s = robot.solution();
             ball = robot.nextBall();
+            telemetry.addData("flywheel",robot.);
             telemetry.addData("Ball (X to switch)", ball);
             telemetry.addData("Distance pivot->CELL", "%.1f in  (record while STILL)", s.realDistance);
             telemetry.addData("Override rpm / hood", "%.0f / %.3f", rpm, hood);

@@ -69,7 +69,7 @@ public final class Flywheel {
 
     private void writePower(double power) {
         // Never drive the flywheel backwards to slow it down; let it coast.
-        power = Math.max(0.0, Math.min(1.0, power));
+        power = Math.max(0.0, Math.min(1.0, power)); //modificat
         // Skip changes too small to matter (each write is a hub call), but always send a change
         // to exactly 0 (stop) or 1 (full power).
         boolean endpoint = (power == 0.0 || power == 1.0) && power != lastPower;

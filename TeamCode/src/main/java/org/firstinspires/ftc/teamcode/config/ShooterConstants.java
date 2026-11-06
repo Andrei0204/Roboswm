@@ -119,7 +119,7 @@ public final class  ShooterConstants {
     /** Proportional power per rpm of error. */
     public static double FLYWHEEL_KP = 0.005;
     /** When more than this far BELOW target (e.g. right after a shot), apply full power. */
-    public static double FLYWHEEL_BANG_BANG_RPM = 10;
+    public static double FLYWHEEL_BANG_BANG_RPM = 50;
     /** The flywheel counts as "at speed" inside [target - BELOW, target + ABOVE]. */
     public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 300; //am modificat de la 100
     public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 300; //si aici
@@ -142,7 +142,7 @@ public final class  ShooterConstants {
     public static double HOOD_SECONDS_PER_FULL_RANGE = 0.375;
     /** Extra wait after the modeled arrival before the hood counts as settled. */
     public static double HOOD_SETTLE_SEC = 0.04;
-    /** Set true to widen the servo pulse range to HOOD_PWM_MIN_US..HOOD_PWM_MAX_US (Axon / goBILDA). */
+    /** Set tr ue to widen the servo pulse range to HOOD_PWM_MIN_US..HOOD_PWM_MAX_US (Axon / goBILDA). */
     public static boolean HOOD_SET_PWM_RANGE = false;
     public static double HOOD_PWM_MIN_US = 500.0;
     public static double HOOD_PWM_MAX_US = 2500.0;
@@ -153,8 +153,8 @@ public final class  ShooterConstants {
 
     // ------------------------------------------------------------------ gate
     /** Gate servo positions. MEASURE with "Hood & Feeder Test". */
-    public static double GATE_CLOSED_POSITION = 0.56;
-    public static double GATE_OPEN_POSITION = 0.44;
+    public static double GATE_CLOSED_POSITION = 0.4;
+    public static double GATE_OPEN_POSITION = 0.27;
     /** Wait after commanding the gate open before the feeder may push a ball. MEASURE. */
     public static double GATE_OPEN_DELAY_SEC = 0.15;
 
@@ -172,7 +172,7 @@ public final class  ShooterConstants {
      * force fire alike, so balls leave one at a time even when a button is held. Ignored when
      * FEEDER_PULSE_SEC <= 0.
      */
-    public static double FEEDER_GAP_SEC = 0;
+    public static double FEEDER_GAP_SEC = 0.02;
 
     // ------------------------------------------------------------------ shot solver
     /**
@@ -248,10 +248,14 @@ public final class  ShooterConstants {
      */
     public static double[][] SHOT_TABLE_POLLEN = {
 
-//            {35.7,1840,0.292,0.52},
+
+
             {27.0,1800,0.320,0.6},
+            {30.1,1690,0.310,0.6},
             {35.4,1750,0.310,0.6},
+            {44.0,1790,0.280,0.6},
             {45.1,1800,0.290,0.6},
+            {50.7,1700,0.280,0.6} //nu e buna dar orientativ
 
 
 
