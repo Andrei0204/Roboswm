@@ -167,8 +167,10 @@ public final class RobotSys {
             feeder.set(true);
             return;
         }
-        if (feeder.update(wanted && gate.isOpen())) forced = !normal;
+        if (feeder.update(wanted && gate.isOpen(), intake.revolutions())) forced = !normal;
         if (!feeder.isFeeding()) forced = false;
+        shooter.flywheel().setFeeding(feeder.isFeeding());
+        shooter.hood().setFeeding(feeder.isFeeding());
     }
 
     /** Tuning only: keep the gate open by hand (shoot() still opens it when firing). */
@@ -330,6 +332,22 @@ public final class RobotSys {
     public void addTelemetry(Telemetry telemetry) {
         Pose pose = follower.pose();
         telemetry.addData("Pose", "x %.1f  y %.1f  h %.1f deg", pose.x(), pose.y(), Math.toDegrees(pose.heading()));
+        // Turret: its angle on the robot and on the field, and where its pivot is on the field.
+        double turretRad = shooter.turretAngle();
+        if (Double.isNaN(turretRad)) {
+            telemetry.addData("Turret position", "not homed (press Y in INIT)");
+        } else {
+            double h = pose.heading();
+            // The turret reads 0 where the shooter points TURRET_ZERO_OFFSET_DEG from the robot's front.
+            turretRad = ShotSolver.normalizeSigned(turretRad
+                    + Math.toRadians(org.firstinspires.ftc.teamcode.config.ShooterConstants.TURRET_ZERO_OFFSET_DEG));
+            double ox = org.firstinspires.ftc.teamcode.config.ShooterConstants.TURRET_OFFSET_X_IN;
+            double oy = org.firstinspires.ftc.teamcode.config.ShooterConstants.TURRET_OFFSET_Y_IN;
+            double px = pose.x() + ox * Math.cos(h) - oy * Math.sin(h);
+            double py = pose.y() + ox * Math.sin(h) + oy * Math.cos(h);
+            telemetry.addData("Turret position", "robot %.1f deg | field %.1f deg | pivot x %.1f  y %.1f",
+                    Math.toDegrees(turretRad), ((Math.toDegrees(h + turretRad) % 360.0) + 360.0) % 360.0, px, py);
+        }
         telemetry.addData("Trims", "aim %.1f deg, distance %.0f in",
                 Math.toDegrees(solver().aimTrimRad), solver().distanceTrimIn);
         telemetry.addData("Intake", "%s  (manual %s), servo %s",

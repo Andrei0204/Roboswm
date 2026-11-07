@@ -29,7 +29,8 @@ import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
  *
  * <p>FEEDER (no balls loaded): hold right trigger = feed direction, hold left trigger = reverse.
  * Balls must move toward the flywheel with the right trigger; if not, make FEEDER_FIRE_POWER
- * negative.
+ * negative. The telemetry shows the feeder encoder speed (ticks/s) and its peak while a trigger is
+ * held: use full-power peak to set FEEDER_KV, and check the sign (else flip FEEDER_ENCODER_REVERSED).
  */
 @TeleOp(name = "Hood & Feeder Test", group = "BioBuzz")
 public class HoodFeederTest extends LinearOpMode {
@@ -56,6 +57,7 @@ public class HoodFeederTest extends LinearOpMode {
         double intakeInit = Double.NaN, intakeAll = Double.NaN, intakePollen = Double.NaN;
         boolean swingToY = true;
         double swingStart = Double.NaN;
+        double peakTps = 0.0;
 
         while (opModeIsActive()) {
             double step = gamepad1.right_bumper ? 0.002 : 0.01;
@@ -119,6 +121,12 @@ public class HoodFeederTest extends LinearOpMode {
             }
             telemetry.addData("Feeder", Double.isNaN(feed) ? "idle (RT = feed, LT = reverse)"
                     : String.format(Locale.US, "power %.2f", feed));
+            double tps = feeder.velocityTps();
+            peakTps = Double.isNaN(tps) ? peakTps : (Math.abs(tps) > Math.abs(peakTps) ? tps : peakTps);
+            if (Double.isNaN(feed)) peakTps = 0.0;
+            telemetry.addData("Feeder encoder", Double.isNaN(tps) ? "none (set FEEDER_ENCODER_NAME)"
+                    : String.format(Locale.US, "%.0f ticks/s   peak %.0f   pos %.0f   (target %.0f)",
+                            tps, peakTps, feeder.positionTicks(), ShooterConstants.FEEDER_TARGET_TPS));
             telemetry.update();
         }
         feeder.stop();

@@ -69,6 +69,16 @@ public final class Intake {
         return manualOn;
     }
 
+    /** Intake encoder position in ticks (counts the direction the motor turns). */
+    public double positionTicks() {
+        return motor.getCurrentPosition();
+    }
+
+    /** Intake motor revolutions since the encoder was last reset. */
+    public double revolutions() {
+        return positionTicks() / Math.max(1e-6, ShooterConstants.INTAKE_TICKS_PER_REV);
+    }
+
     public boolean isRunning() {
         return !Double.isNaN(lastPower) && lastPower != 0.0;
     }

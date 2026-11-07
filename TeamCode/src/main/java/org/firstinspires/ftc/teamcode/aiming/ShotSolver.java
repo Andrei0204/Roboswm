@@ -164,7 +164,8 @@ public final class ShotSolver {
 
         // 4. Aim, flywheel and hood.
         s.aimFieldAngle = c.aim + aimTrimRad;
-        s.turretAngle = normalizeSigned(s.aimFieldAngle - c.heading);
+        s.turretAngle = normalizeSigned(s.aimFieldAngle - c.heading
+                - Math.toRadians(ShooterConstants.TURRET_ZERO_OFFSET_DEG));
         double lookup = s.virtualDistance + distanceTrimIn;
         s.flywheelRpm = rpmTables[ball.ordinal()].get(lookup);
         s.hoodPosition = hoodTables[ball.ordinal()].get(lookup);

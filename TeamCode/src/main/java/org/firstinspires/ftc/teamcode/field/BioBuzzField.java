@@ -34,9 +34,9 @@ public final class BioBuzzField {
      */
     public static double FIELD_CENTER_IN = 72.0;
     /** Field center to each HIVE centerline, toward that alliance's wall (centerlines are 25.5 in apart). MEASURE. */
-    public static double HIVE_SIDE_OFFSET_IN = 15;
+    public static double HIVE_SIDE_OFFSET_IN = 10;
     /** Field center to a CELL opening center along the audience-rear axis (manual figures give 16.5-18.1). MEASURE. */
-    public static double CELL_OPENING_AXIAL_OFFSET_IN = 13;
+    public static double CELL_OPENING_AXIAL_OFFSET_IN = 20;
     /** CELL opening center height above the tiles. Informational: the shot table is calibrated against it. */
     public static double CELL_OPENING_HEIGHT_IN = 58.4;
     /** Width of the pentagonal CELL opening (14 in tall, 12 in deep). Aim at its lateral center. */

@@ -7,7 +7,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 
 /**
- * Flywheel velocity control: feedforward (kS + kV * rpm, voltage compensated) + P, with full
+ * Flywheel velocity control: feedforward (kS + kV * rpm, voltage compensated) + P + I on a
+ * smoothed rpm measurement, with full
  * power when far below target so it recovers quickly after a shot.
  *
  * <p>The motors run in RUN_WITHOUT_ENCODER with our own controller. Never call setVelocity() on
@@ -18,6 +19,12 @@ public final class Flywheel {
     private double targetRpm;
     private double measuredRpm;
     private double lastPower = Double.NaN;
+    private double integral;
+    private double lastUpdateTime = Double.NaN;
+    private double lastTarget;
+    private boolean filterPrimed;
+    /** Last time a ball was being fed (s), for the recoil boost hold. */
+    private double lastFeedTime = Double.NEGATIVE_INFINITY;
 
     public Flywheel(HardwareMap hardwareMap) {
         String[] names = ShooterConstants.FLYWHEEL_MOTOR_NAMES;
@@ -37,25 +44,49 @@ public final class Flywheel {
 
     /** Reads the encoder velocity. Call once per loop after clearing the bulk cache. */
     public void readSensors() {
-        measuredRpm = motors[0].getVelocity() / ShooterConstants.FLYWHEEL_TICKS_PER_REV * 60.0;
+        double raw = motors[0].getVelocity() / ShooterConstants.FLYWHEEL_TICKS_PER_REV * 60.0;
+        double alpha = Math.max(0.01, Math.min(1.0, ShooterConstants.FLYWHEEL_RPM_FILTER));
+        measuredRpm = filterPrimed ? measuredRpm + alpha * (raw - measuredRpm) : raw;
+        filterPrimed = true;
     }
 
     public void setTargetRpm(double rpm) {
         targetRpm = Math.max(0.0, rpm);
     }
 
+    /** Call every loop with whether a ball is being fed now, to enable the recoil compensation. */
+    public void setFeeding(boolean feeding) {
+        if (feeding) lastFeedTime = System.nanoTime() * 1e-9;
+    }
+
     /** @param voltageScale nominal voltage / battery voltage */
     public void update(double voltageScale) {
+        double now = System.nanoTime() * 1e-9;
+        double dt = Double.isNaN(lastUpdateTime) ? 0.0 : Math.min(now - lastUpdateTime, 0.1);
+        lastUpdateTime = now;
+        // A new set point (or off) starts the integral from scratch.
+        if (targetRpm <= 0.0 || Math.abs(targetRpm - lastTarget) > ShooterConstants.FLYWHEEL_I_ZONE_RPM) integral = 0.0;
+        lastTarget = targetRpm;
         double power;
         if (targetRpm <= 0.0) {
             power = 0.0;
         } else {
-            double error = targetRpm - measuredRpm;
+            boolean recoil = System.nanoTime() * 1e-9 - lastFeedTime <= ShooterConstants.FLYWHEEL_RECOIL_HOLD_SEC;
+            double drive = targetRpm + (recoil ? Math.max(0.0, ShooterConstants.FLYWHEEL_RECOIL_BOOST_RPM) : 0.0);
+            double error = drive - measuredRpm;
             if (error > ShooterConstants.FLYWHEEL_BANG_BANG_RPM) {
-                power = 1.0;
+                power = 1.0; // the integral is frozen here so it keeps what it learned
             } else {
-                power = (ShooterConstants.FLYWHEEL_KS + ShooterConstants.FLYWHEEL_KV * targetRpm) * voltageScale
-                        + ShooterConstants.FLYWHEEL_KP * error;
+                double kI = Math.abs(ShooterConstants.FLYWHEEL_KI);
+                if (kI > 0.0 && Math.abs(error) <= ShooterConstants.FLYWHEEL_I_ZONE_RPM) {
+                    double limit = Math.abs(ShooterConstants.FLYWHEEL_I_CLAMP) / kI;
+                    integral = Math.max(-limit, Math.min(limit, integral + error * dt));
+                } else if (kI == 0.0) {
+                    integral = 0.0;
+                }
+                power = (ShooterConstants.FLYWHEEL_KS + ShooterConstants.FLYWHEEL_KV * drive) * voltageScale
+                        + ShooterConstants.FLYWHEEL_KP * error
+                        + Math.abs(ShooterConstants.FLYWHEEL_KI) * integral;
             }
         }
         writePower(power);
@@ -68,7 +99,7 @@ public final class Flywheel {
     }
 
     private void writePower(double power) {
-        // Never drive the flywheel backwards to slow it down; let it coast.
+        // Never dr`ive the flywheel backwards to slow it down; let it coast.
         power = Math.max(0.0, Math.min(1.0, power)); //modificat
         // Skip changes too small to matter (each write is a hub call), but always send a change
         // to exactly 0 (stop) or 1 (full power).

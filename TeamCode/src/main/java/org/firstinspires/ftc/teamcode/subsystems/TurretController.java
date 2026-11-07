@@ -14,8 +14,7 @@ import org.firstinspires.ftc.teamcode.config.ShooterConstants;
  * <ul>
  *   <li>picks the reachable equivalent of the target inside the soft limits (a turret limited by
  *       its cables covers under 360 deg, so the gap behind it is unreachable);</li>
- *   <li>closes the loop on the encoder: power = KP * error + KD * rate error + KV * target rate
- *       + KS * sign(error). The servo has no position of its own, so without a homed encoder it
+ *   <li>closes the loop on the encoder: PD: power = KP * error + KD * (target rate - rate). The servo has no position of its own, so without a homed encoder it
  *       is not powered at all;</li>
  *   <li>cuts power that would push past a soft limit;</li>
  *   <li>counts as a    imed only when the ENCODER angle is within tolerance and the encoder rate
@@ -122,7 +121,7 @@ public final class TurretController {
         if (homing) return home(dt);
         if (!hasReference()) {
             hasSetpoint = false;
-            reachable = true;
+                reachable = true;
             commandedRate = 0.0;
             return power = 0.0;
         }
@@ -134,12 +133,11 @@ public final class TurretController {
         reachable = TurretMath.reaches(setpoint, targetAngle);
         commandedRate = reachable ? targetRate : 0.0;
 
+        // PD on the angle error (no integral: with backlash an I term winds up and hunts).
+        // Backlash itself is removed by the opposing servo bias applied in Turret.
         double error = setpoint - angle;
-        double p = 0.0;
-        if (Math.abs(error) > Math.toRadians(ShooterConstants.TURRET_DEADBAND_DEG)) {
-            p = ShooterConstants.TURRET_KP * error + ShooterConstants.TURRET_KS * Math.signum(error);
-        }
-        p += ShooterConstants.TURRET_KD * (commandedRate - rate) + ShooterConstants.TURRET_KV * commandedRate;
+        // D acts on the derivative of the error: (target rate - real rate).
+        double p = ShooterConstants.TURRET_KP * error + ShooterConstants.TURRET_KD * (commandedRate - rate);
         // Never push further out through a soft limit.
         if ((angle >= max && p > 0.0) || (angle <= min && p < 0.0)) p = 0.0;
         double maxPower = ShooterConstants.TURRET_MAX_POWER;

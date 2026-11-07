@@ -106,7 +106,7 @@ public class ShooterCalibration extends LinearOpMode {
 
             s = robot.solution();
             ball = robot.nextBall();
-            telemetry.addData("flywheel",robot.);
+            telemetry.addData("flywheel",robot.shooter().flywheel().measuredRpm());
             telemetry.addData("Ball (X to switch)", ball);
             telemetry.addData("Distance pivot->CELL", "%.1f in  (record while STILL)", s.realDistance);
             telemetry.addData("Override rpm / hood", "%.0f / %.3f", rpm, hood);

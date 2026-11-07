@@ -29,7 +29,7 @@ Ground rules:
 | 6 | HIVE aim points | tape measure / CAD | `BioBuzzField` | telemetry distance matches the tape |
 | 7 | Shot table | *Shooter Calibration* | `SHOT_TABLE_POLLEN` | 5/5 still shots at every row |
 | 8 | Still-shot checks | *Shoot On The Move* | trims, `MAX_APPROACH_ANGLE_DEG` | scores from every spot you want to shoot from |
-| 9 | Turret lag and latency | *Shoot On The Move* (spin tests) | `TURRET_KV`, `TURRET_KP`, `LOOKAHEAD_SEC` | no miss bias while spinning |
+| 9 | Turret lag and latency | *Shoot On The Move* (spin tests) | `TURRET_KP`, `TURRET_KD`, `LOOKAHEAD_SEC` | no miss bias while spinning |
 | 10 | Moving shots | *Shoot On The Move* (drive-bys) | `LEAD_DRAG_COEFF`, ToF column | no bias while strafing or driving in and out |
 | 11 | Gates and limits | *Shoot On The Move* | tolerances, `MAX_SHOT_*`, filters | moving hit rate meets your target |
 | 12 | HIVE tips | *Shoot On The Move* | `HIVE_TIP_PAUSE_SEC` | never fires into a tipping HIVE |
@@ -142,11 +142,11 @@ Tool: **Turret Servo Setup** (no Pedro needed).
    limits are the only thing keeping the turret off its cables: the servo never stops itself.
 5. **Gains** (*Shoot On The Move*, turret homed). Start with `TURRET_KP` and watch *Turret
    target / set / encoder*:
-   - `TURRET_KS`: raise until the turret just creeps in to a 3° error instead of stalling.
+   - `TURRET_SERVO_DEADBAND_POWER`: raise until the turret just starts to move for a tiny error.
    - `TURRET_KP`: raise until it settles fast, lower if it oscillates.
    - `TURRET_KD`: raise if it overshoots.
-   - `TURRET_DEADBAND_DEG`: raise to about half the backlash if it hunts when still.
-   - `TURRET_KV` is tuned in step 9.
+   - `TURRET_BIAS_POWER`: needs two turret servos on opposite sides of the gear (add both to
+     `TURRET_SERVO_NAMES`). Raise until the play is gone. Use the *Turret Tuner* OpMode.
 6. **Turret offset.** Measure the turret's rotation axis from the robot center:
    - `TURRET_OFFSET_X_IN`, + forward
    - `TURRET_OFFSET_Y_IN`, + left
@@ -299,9 +299,9 @@ Trims reset when the OpMode restarts, so put the real fix in the constants.
 Tool: **Shoot On The Move**. Park about 50 in from the CELL and spin slowly in place at a steady
 rate (small right-stick input, about 60–90°/s). Do it in both directions.
 
-1. **`TURRET_KV`** (no shooting). Watch *Turret error / allowed* and *Turret ff rate*.
-   - Error has the **same sign** as the ff rate (the turret lags): raise `TURRET_KV` by 10%.
-   - **Opposite** sign: lower it.
+1. **`TURRET_KP` / `TURRET_KD`** (no shooting). Watch *Turret error / allowed*.
+   - The error stays on one side while spinning (the turret lags): raise `TURRET_KP`, then `TURRET_KD`.
+   - It swings both sides: lower them.
    - Done when the error averages under 1° while spinning.
 2. **`LOOKAHEAD_SEC`** (now shoot while spinning). The turret tracks its target from step 1, so
    any bias left is sensor and loop delay.
@@ -352,12 +352,12 @@ quickly. The drivers should cross the face instead.
 
 | Symptom | Fix |
 |---|---|
-| Turret buzzes or hunts when still | raise `TURRET_DEADBAND_DEG` to half the backlash, or lower `TURRET_KP` / `TURRET_KS` |
+| Turret buzzes or hunts when still | lower `TURRET_KP` or `TURRET_SERVO_DEADBAND_POWER` |
 | Overshoots the target | raise `TURRET_KD` or lower `TURRET_KP` |
-| Slow to settle on target | raise `TURRET_KP` or `TURRET_KS` |
+| Slow to settle on target | raise `TURRET_KP` or `TURRET_SERVO_DEADBAND_POWER` |
 
 ---|---|
-| Turret buzzes or hunts when still | raise `TURRET_P_DEADBAND_DEG` to half the backlash, or lower `TURRET_ENCODER_KP` (must stay < 1) |
+| Turret buzzes or hunts when still | lower `TURRET_KP` or `TURRET_SERVO_DEADBAND_POWER` |
 | Slow to settle on target | `TURRET_CORRECTION_GAIN` up to 6 (simulated stable to 6) |
 | *correction* sits near ±8° | servo map is off: redo step 3 |
 
@@ -402,7 +402,7 @@ quickly. The drivers should cross the face instead.
 | Won't fire at all | *Problems* line; encoder not zeroed (turret was not forward at INIT: press Y); flywheel not *at speed*; `HOOD_SECONDS_PER_FULL_RANGE` too large. Gamepad1 left trigger (force fire) bypasses every check |
 | Turret points the wrong way | `TURRET_SERVO_REVERSED`, `TURRET_ENCODER_SIGN`, or the homing pose (step 3) |
 | "DEAD ZONE: rotate the robot" | target behind the turret's travel: turn the robot |
-| Misses only while spinning | `TURRET_KV`, `LOOKAHEAD_SEC`, `TURRET_OFFSET_*` (steps 3, 9) |
+| Misses only while spinning | `TURRET_KP`, `TURRET_KD`, `LOOKAHEAD_SEC`, `TURRET_OFFSET_*` (steps 3, 9) |
 | Misses only while strafing | `LEAD_DRAG_COEFF` (step 10) |
 | Misses only while driving in/out | ToF column (step 10) |
 | Second ball of a burst short | flywheel recovery (step 4); `FEEDER_PULSE_SEC` |

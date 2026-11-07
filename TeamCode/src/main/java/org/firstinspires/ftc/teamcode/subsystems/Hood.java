@@ -18,6 +18,9 @@ public final class Hood {
 
     private final Servo servo;
     private double commanded = Double.NaN;
+    /** What was last actually written to the servo (commanded + recoil offset). */
+    private double written = Double.NaN;
+    private double lastFeedTime = Double.NEGATIVE_INFINITY;
     private double modeled;
     private double settledFor;
     /** At startup the real position is unknown: assume a full-range move is needed. */
@@ -31,6 +34,18 @@ public final class Hood {
         }
     }
 
+    /** Call every loop with whether a ball is being fed now, to enable the recoil compensation. */
+    public void setFeeding(boolean feeding) {
+        if (feeding) lastFeedTime = System.nanoTime() * 1e-9;
+    }
+
+    /** Servo target: the commanded position plus the recoil offset while shooting. */
+    private double output() {
+        boolean recoil = System.nanoTime() * 1e-9 - lastFeedTime <= ShooterConstants.HOOD_RECOIL_HOLD_SEC;
+        double out = commanded + (recoil ? ShooterConstants.HOOD_RECOIL_OFFSET : 0.0);
+        return Math.max(ShooterConstants.HOOD_MIN_POSITION, Math.min(ShooterConstants.HOOD_MAX_POSITION, out));
+    }
+
     /**
      * @param position desired servo position (clamped to the hood limits)
      * @param dt       seconds since the previous call
@@ -40,16 +55,19 @@ public final class Hood {
                 Math.min(ShooterConstants.HOOD_MAX_POSITION, position));
         if (Double.isNaN(target)) return;
         if (Double.isNaN(commanded)) {
-            servo.setPosition(target);
             commanded = target;
+            written = output();
+            servo.setPosition(written);
             modeled = target;
             settledFor = 0.0;
             startupWait = ShooterConstants.HOOD_SECONDS_PER_FULL_RANGE;
             return;
         }
-        if (Math.abs(target - commanded) >= WRITE_DEADBAND) {
-            servo.setPosition(target);
-            commanded = target;
+        if (Math.abs(target - commanded) >= WRITE_DEADBAND) commanded = target;
+        double out = output();
+        if (Math.abs(out - written) >= WRITE_DEADBAND || (out != written && (out == ShooterConstants.HOOD_MIN_POSITION || out == ShooterConstants.HOOD_MAX_POSITION))) {
+            servo.setPosition(out);
+            written = out;
         }
         double step = ShooterConstants.HOOD_SECONDS_PER_FULL_RANGE > 0.0
                 ? Math.max(0.0, dt) / ShooterConstants.HOOD_SECONDS_PER_FULL_RANGE
