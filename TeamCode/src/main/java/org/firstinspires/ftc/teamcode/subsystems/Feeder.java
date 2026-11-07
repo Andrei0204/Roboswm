@@ -9,8 +9,8 @@ import org.firstinspires.ftc.teamcode.config.ShooterConstants;
 /**
  * Transfer that pushes balls into the flywheel: a motor or a CR servo.
  *
- * <p>{@link #update} feeds in pulses (one ball each) lasting FEEDER_PULSE_INTAKE_REVS intake
- * rotations, or FEEDER_PULSE_SEC seconds when that is 0; a new pulse starts only
+ * <p>{@link #update} feeds in pulses (one ball each) lasting FEEDER_PULSE_SEC seconds
+ * (timer only); a new pulse starts only
  * when the previous one has ended and a feed is still requested. A started pulse always finishes,
  * so a ball is never left half-fed. After each pulse the feeder rests FEEDER_GAP_SEC before the
  * next one, for normal and forced fire alike. With FEEDER_PULSE_SEC <= 0 it feeds for as long as requested.
@@ -26,9 +26,6 @@ public final class Feeder {
     private double lastPower = Double.NaN;
     private boolean feeding;
     private double feedEnd;
-    private double feedStart;
-    /** Intake revolutions when the current pulse started (rotation-based pulses). */
-    private double startRevs;
     /** Earliest time the next pulse may start (end of the previous pulse + the gap). */
     private double nextStart;
     private int feeds;
@@ -59,37 +56,17 @@ public final class Feeder {
      * @return true if a new feed started this loop
      */
     public boolean update(boolean requested) {
-        return update(requested, Double.NaN);
-    }
-
-    /**
-     * Same as {@link #update(boolean)}, but when FEEDER_PULSE_INTAKE_REVS &gt; 0 and the intake
-     * position is known, a pulse lasts that many intake rotations instead of FEEDER_PULSE_SEC
-     * (with FEEDER_PULSE_MAX_SEC as a failsafe).
-     *
-     * @param intakeRevs intake motor revolutions (any zero point, either direction); NaN = unknown
-     */
-    public boolean update(boolean requested, double intakeRevs) {
         double now = System.nanoTime() * 1e-9;
         boolean started = false;
         double pulse = ShooterConstants.FEEDER_PULSE_SEC;
-        boolean byRevs = ShooterConstants.FEEDER_PULSE_INTAKE_REVS > 0.0 && !Double.isNaN(intakeRevs);
-        if (byRevs || pulse > 0.0) {
-            if (feeding) {
-                boolean done = byRevs
-                        ? Math.abs(intakeRevs - startRevs) >= ShooterConstants.FEEDER_PULSE_INTAKE_REVS
-                                || now >= feedStart + Math.max(0.01, ShooterConstants.FEEDER_PULSE_MAX_SEC)
-                        : now >= feedEnd;
-                if (done) {
-                    feeding = false;
-                    nextStart = (byRevs ? now : feedEnd) + Math.max(0.0, ShooterConstants.FEEDER_GAP_SEC);
-                }
+        if (pulse > 0.0) {
+            if (feeding && now >= feedEnd) {
+                feeding = false;
+                nextStart = feedEnd + Math.max(0.0, ShooterConstants.FEEDER_GAP_SEC);
             }
             if (!feeding && requested && now >= nextStart) {
                 feeding = true;
-                feedStart = now;
                 feedEnd = now + pulse;
-                startRevs = byRevs ? intakeRevs : 0.0;
                 started = true;
             }
         } else {
@@ -162,6 +139,12 @@ public final class Feeder {
     public double positionTicks() {
         return encoder == null ? Double.NaN
                 : encoder.getCurrentPosition() * (ShooterConstants.FEEDER_ENCODER_REVERSED ? -1.0 : 1.0);
+    }
+
+    /** Feeder revolutions from the encoder (0 if there is none), sign as used by the PID. */
+    public double revolutions() {
+        double ticks = positionTicks();
+        return Double.isNaN(ticks) ? 0.0 : ticks / Math.max(1e-6, ShooterConstants.FEEDER_TICKS_PER_REV);
     }
 
     private void resetPid() {

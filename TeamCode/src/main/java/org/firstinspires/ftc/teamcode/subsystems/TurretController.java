@@ -14,7 +14,7 @@ import org.firstinspires.ftc.teamcode.config.ShooterConstants;
  * <ul>
  *   <li>picks the reachable equivalent of the target inside the soft limits (a turret limited by
  *       its cables covers under 360 deg, so the gap behind it is unreachable);</li>
- *   <li>closes the loop on the encoder: PD: power = KP * error + KD * (target rate - rate). The servo has no position of its own, so without a homed encoder it
+ *   <li>closes the loop on the encoder: PID with a NEAR and a FAR gain set: power = KP * error + KI * integral + KD * (target rate - rate). The servo has no position of its own, so without a homed encoder it
  *       is not powered at all;</li>
  *   <li>cuts power that would push past a soft limit;</li>
  *   <li>counts as a    imed only when the ENCODER angle is within tolerance and the encoder rate
@@ -51,6 +51,7 @@ public final class TurretController {
     private boolean reachable = true;
     private double commandedRate;
     private double power;
+    private double integral;
 
     /** Checks the turret constants; throws with a readable message if they cannot work. */
     public static void validateConstants() {
@@ -96,6 +97,7 @@ public final class TurretController {
         freshReadsNeeded = 0;
         resetFailed = false;
         hasSetpoint = false;
+        integral = 0.0;
         power = 0.0;
     }
 
@@ -123,6 +125,7 @@ public final class TurretController {
             hasSetpoint = false;
                 reachable = true;
             commandedRate = 0.0;
+            integral = 0.0;
             return power = 0.0;
         }
 
@@ -133,11 +136,22 @@ public final class TurretController {
         reachable = TurretMath.reaches(setpoint, targetAngle);
         commandedRate = reachable ? targetRate : 0.0;
 
-        // PD on the angle error (no integral: with backlash an I term winds up and hunts).
-        // Backlash itself is removed by the opposing servo bias applied in Turret.
+        // PID on the angle error with two gain sets: aggressive NEAR the target (accuracy),
+        // gentler FAR from it. Backlash itself is removed by the opposing servo bias in Turret.
         double error = setpoint - angle;
+        boolean near = Math.abs(error) < Math.toRadians(ShooterConstants.TURRET_NEAR_DEG);
+        double kp = near ? ShooterConstants.TURRET_NEAR_KP : ShooterConstants.TURRET_FAR_KP;
+        double ki = near ? ShooterConstants.TURRET_NEAR_KI : ShooterConstants.TURRET_FAR_KI;
+        double kd = near ? ShooterConstants.TURRET_NEAR_KD : ShooterConstants.TURRET_FAR_KD;
+        double iMax = Math.max(0.0, ShooterConstants.TURRET_KI_MAX_POWER);
+        if (near && ki != 0.0) {
+            integral += error * dt;
+            integral = Math.max(-iMax / Math.abs(ki), Math.min(iMax / Math.abs(ki), integral));
+        } else {
+            integral = 0.0;
+        }
         // D acts on the derivative of the error: (target rate - real rate).
-        double p = ShooterConstants.TURRET_KP * error + ShooterConstants.TURRET_KD * (commandedRate - rate);
+        double p = kp * error + ki * integral + kd * (commandedRate - rate);
         // Never push further out through a soft limit.
         if ((angle >= max && p > 0.0) || (angle <= min && p < 0.0)) p = 0.0;
         double maxPower = ShooterConstants.TURRET_MAX_POWER;

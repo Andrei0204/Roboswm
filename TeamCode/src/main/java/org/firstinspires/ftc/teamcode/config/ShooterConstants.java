@@ -63,7 +63,7 @@ public final class  ShooterConstants {
      * Turret angles are robot-relative, counter-clockwise positive seen from above, and 0 means
      * shooting straight forward. The continuous-rotation servo only takes a power; the external
      * encoder is the turret's only position feedback, so the controller closes the loop on it:
-     *   power = KP*error + KD*(targetRate - rate), plus an opposing servo bias to remove backlash
+     *   power = KP*error + KI*integral + KD*(targetRate - rate), with NEAR and FAR gain sets
      * Find the encoder numbers with the "Turret Servo Setup" OpMode.
      */
     /**
@@ -73,32 +73,25 @@ public final class  ShooterConstants {
      * turret's own frame (0 = this direction), so the cable dead zone is opposite to it.
      */
     public static double TURRET_ZERO_OFFSET_DEG = 0;
-    /** Power per rad of angle error. TUNE: raise until it settles fast without oscillating. */
-    public static double TURRET_KP = 0.3;
-    /** Power per rad/s of rate error (damping). Raise if the turret overshoots. */
-    public static double TURRET_KD = 0.025;
     /**
-     * Anti-backlash bias (needs 2+ turret servos in TURRET_SERVO_NAMES, driving the turret gear
-     * from opposite sides of the teeth): servo 0 gets +bias and servo 1 gets -bias on top of the
-     * command, so they always fight each other slightly and every tooth stays loaded on both
-     * flanks, giving zero play. 0 = off. TUNE: raise until the play is gone, lower if the
-     * servos get hot or it hums.
+     * Two PID sets, chosen by how far the turret is from its target. FAR (big error) moves it
+     * quickly and gently; NEAR (small error) is more aggressive so it settles accurately.
+     * Power = KP*error(rad) + KI*integral(error) + KD*(target rate - rate)(rad/s).
      */
-    public static double TURRET_BIAS_POWER = 4;
-    /**
-     * The bias fades out linearly as the command grows to this power, so a big move gets full
-     * torque from both servos and only holding/small moves are preloaded.
-     */
-    public static double TURRET_BIAS_FADE_POWER = 0.4;
-    /**
-     * Servo deadzone: the continuous servo does not move between neutral (position 0.5) and this
-     * much power. Every non-zero command is mapped onto [this, 1] so it starts moving right away
-     * and full power is still 1. MEASURE: raise until the turret just starts to move for a tiny
-     * command, then back off a little. 0 = off.
-     */
-    public static double TURRET_SERVO_DEADBAND_POWER = 0.03;
-    /** Commands smaller than this are treated as 0 (no added power), so noise does not make it twitch. */
-    public static double TURRET_SERVO_ZERO_BELOW = 0.0025;
+    /** The NEAR set is used while |error| is below this (deg). */
+    public static double TURRET_NEAR_DEG = 30;
+    /** FAR: power per rad of error. TUNE: raise until it closes fast without oscillating. */
+    public static double TURRET_FAR_KP = 0.3;
+    public static double TURRET_FAR_KI = 0.0;
+    /** FAR: power per rad/s of rate error (damping). Raise if it overshoots. */
+    public static double TURRET_FAR_KD = 0.02;
+    /** NEAR: aggressive set for the last few degrees. TUNE: raise KP until it just starts to hunt, then back off. */
+    public static double TURRET_NEAR_KP = 0.5;
+    /** NEAR: integral (only runs inside the near zone; cleared outside). Keep small, 0 = off. */
+    public static double TURRET_NEAR_KI = 0.01;
+    public static double TURRET_NEAR_KD = 0.02;
+    /** Limit on the integral's power contribution (0..1). */
+    public static double TURRET_KI_MAX_POWER = 0.15;
     /** Limit on the turret power (0..1). */
     public static double TURRET_MAX_POWER = 1.0;
     /**
@@ -117,7 +110,7 @@ public final class  ShooterConstants {
      * on the 76T turret shaft = 1.0; on the 24T/26T compound shaft = 76/26 = 2.923; on the servo
      * shaft = (24/60)*(76/26) = 1.169. "Turret Servo Setup" checks this. MEASURE.
      */
-    public static double TURRET_ENCODER_REVS_PER_TURRET_REV = 2.92;
+    public static double TURRET_ENCODER_REVS_PER_TURRET_REV = 2.923;
     /** +1 or -1 so the encoder angle INCREASES when the turret turns counter-clockwise. MEASURE. */
     public static int TURRET_ENCODER_SIGN = 1;
     /**
@@ -155,9 +148,9 @@ public final class  ShooterConstants {
      * The 28 ticks/rev encoder is coarse, so a lower value (0.3-0.6) removes the jitter that
      * would otherwise make the power hunt. Too low adds lag.
      */
-    public static double FLYWHEEL_RPM_FILTER = 0.5;
+    public static double FLYWHEEL_RPM_FILTER = 1;
     /** When more than this far BELOW target (e.g. right after a shot), apply full power. */
-    public static double FLYWHEEL_BANG_BANG_RPM = 100;
+    public static double FLYWHEEL_BANG_BANG_RPM = 40;
     /** The flywheel counts as "at speed" inside [target - BELOW, target + ABOVE]. */
     public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 300; //am modificat de la 100
     public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 300; //si aici
@@ -214,7 +207,7 @@ public final class  ShooterConstants {
     public static double GATE_CLOSED_POSITION = 0.4;
     public static double GATE_OPEN_POSITION = 0.27;
     /** Wait after commanding the gate open before the feeder may push a ball. MEASURE. */
-    public static double GATE_OPEN_DELAY_SEC = 0.15;
+    public static double GATE_OPEN_DELAY_SEC = 0.05;
 
     // ------------------------------------------------------------------ feeder
     public static double FEEDER_FIRE_POWER = 1; //REVERSEFEEDER
@@ -224,23 +217,14 @@ public final class  ShooterConstants {
      * Length of one feed pulse (one ball). After a pulse the shooter must be ready again before
      * the next one. Set to 0 or less for continuous feeding while ready.
      */
-    public static double FEEDER_PULSE_SEC =0.08;
-    /**
-     * Feed pulse length measured in INTAKE rotations (one ball per pulse): a pulse ends once the
-     * intake motor has turned this many revolutions since the pulse started. Needs the intake
-     * encoder (the intake motor's own port). 0 or less = use the time FEEDER_PULSE_SEC instead.
-     * TUNE: raise if the ball does not fully leave, lower if a second ball sneaks in.
-     */
-    public static double FEEDER_PULSE_INTAKE_REVS = 0;
-    /** Failsafe for the rotation pulse: it ends after this long even if the intake did not turn (jam). */
-    public static double FEEDER_PULSE_MAX_SEC = 1.0;
-    /**
+    public static double FEEDER_PULSE_SEC =0.05;
+    /*
      * Rest between two pulses (balls), counted from the end of a pulse. It applies to normal and
      * force fire alike, so balls leave one at a time even when a button is held. Ignored when
      * FEEDER_PULSE_SEC <= 0.
      */
-    public static double FEEDER_GAP_SEC = 0.05;
-    /**
+    public static double FEEDER_GAP_SEC = 0.07;
+    /*
      * Closed-loop feeder speed while shooting, so every ball is pushed at the same speed whatever
      * the battery or the load. Needs the feeder to be a motor with its encoder plugged into the
      * same port. When false (or the feeder is a CR servo) FEEDER_FIRE_POWER is used open loop.
@@ -253,6 +237,8 @@ public final class  ShooterConstants {
     public static String FEEDER_ENCODER_NAME = "BR";
     /** Flip if the encoder counts negative when the feeder pushes balls toward the flywheel. */
     public static boolean FEEDER_ENCODER_REVERSED = false;
+    /** Feeder encoder ticks per feeder revolution (537.7 = goBILDA 312 rpm, 384.5 = 435 rpm, 28 = bare motor). MEASURE. */
+    public static double FEEDER_TICKS_PER_REV = 537.7;
     /** Target feeder speed in encoder ticks/s (magnitude; direction follows FEEDER_FIRE_POWER). TUNE. */
     public static double FEEDER_TARGET_TPS = 1800;
     /** Feedforward: power per tick/s. Start at ~1 / (max free speed in ticks/s). TUNE FIRST. */
@@ -338,18 +324,21 @@ public final class  ShooterConstants {
      */
     public static double[][] SHOT_TABLE_POLLEN = {
 
-//            {27.0,1800,0.320,0.6},
-//            {30.1,1690,0.310,0.6},
-            {28.4,1750,0.310,0.6},
-            {33.9,1730 ,0.288,0.6},
-            {38,1767,0.282,0.6},
-            {42.2,1791,0.273,0.6},
-            {45.5,1830,0.270,0.6},
-            {48.6,1810,0.270,0.6},
-            {52,1830,0.270,0.6}
-//            {44.0,1790,0.280,0.6},
-//            {45.1,1800,0.290,0.6},
-//            {50.7,1700,0.280,0.6} //nu e buna dar orientativ
+            {24.3,1770,0.304,0.5},
+            {31.2,1760,0.299,0.5},
+            {34.6,1783,0.29,0.5},
+            {37.1,1800,0.284,0.5},
+            {43.7,1830,0.274,0.5},
+            {50,1830,0.274,0.5},
+
+//            {28.4,1750,0.310,0.6},
+//            {33.9,1730 ,0.288,0.6},
+//            {38,1805,0.282,0.6},
+//            {42.2,1791,0.273,0.6},
+//            {45.5,1830,0.270,0.6},
+//            {48.6,1810,0.270,0.6},
+//            {52,1830,0.270,0.6}
+
 
 
 

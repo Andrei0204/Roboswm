@@ -5,7 +5,8 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import java.util.Locale;
 import org.firstinspires.ftc.teamcode.config.ShooterConstants;
@@ -41,11 +42,11 @@ public class TurretServoSetup extends LinearOpMode {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
         String[] names = ShooterConstants.TURRET_SERVO_NAMES;
-        Servo[] servos = new Servo[names.length];
+        CRServo[] servos = new CRServo[names.length];
         for (int i = 0; i < names.length; i++) {
-            servos[i] = hardwareMap.get(Servo.class, names[i]);
+            servos[i] = hardwareMap.get(CRServo.class, names[i]);
             servos[i].setDirection(ShooterConstants.TURRET_SERVO_REVERSED[i]
-                    ? Servo.Direction.REVERSE : Servo.Direction.FORWARD);
+                    ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
         }
         DcMotorEx encoder = hardwareMap.get(DcMotorEx.class, ShooterConstants.TURRET_ENCODER_NAME);
 
@@ -79,7 +80,7 @@ public class TurretServoSetup extends LinearOpMode {
 
             double jog = gamepad1.right_bumper ? FINE_JOG_POWER : JOG_POWER;
             double power = gamepad1.dpad_left ? jog : (gamepad1.dpad_right ? -jog : 0.0);
-            for (Servo servo : servos) servo.setPosition(0.5 + 0.5 * power);
+            for (CRServo servo : servos) servo.setPower(power);
 
             telemetry.addData("Power (dpad left = + = counter-clockwise)", "%.2f", power);
             telemetry.addData("Encoder (X = reset to 0)", "%d ticks, %.0f deg/s", ticks, ticksPerSec * degPerTick);
@@ -102,7 +103,7 @@ public class TurretServoSetup extends LinearOpMode {
             }
             telemetry.update();
         }
-        for (Servo servo : servos) servo.setPosition(0.5);
+        for (CRServo servo : servos) servo.setPower(0.0);
     }
 
     private static void resetEncoder(DcMotorEx encoder) {

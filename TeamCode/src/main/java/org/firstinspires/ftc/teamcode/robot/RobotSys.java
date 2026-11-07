@@ -167,10 +167,33 @@ public final class RobotSys {
             feeder.set(true);
             return;
         }
-        if (feeder.update(wanted && gate.isOpen(), intake.revolutions())) forced = !normal;
+        if (feeder.update(wanted && gate.isOpen())) forced = !normal;
         if (!feeder.isFeeding()) forced = false;
+        trackPulse();
         shooter.flywheel().setFeeding(feeder.isFeeding());
         shooter.hood().setFeeding(feeder.isFeeding());
+    }
+
+    // ---- feeder rotations per pulse (to convert FEEDER_PULSE_SEC into rotations)
+    private boolean pulseActive;
+    private double pulseT0, pulseRevs0;
+    private boolean havePulse;
+    private double lastPulseRevs, lastPulseSec;
+
+    /** Call every loop after the feeder update: counts the feeder rotations of the pulse in progress. */
+    private void trackPulse() {
+        double now = System.nanoTime() * 1e-9;
+        boolean feeding = feeder.isFeeding();
+        if (feeding && !pulseActive) {
+            pulseActive = true;
+            pulseT0 = now;
+            pulseRevs0 = feeder.revolutions();
+        } else if (!feeding && pulseActive) {
+            pulseActive = false;
+            lastPulseSec = now - pulseT0;
+            lastPulseRevs = Math.abs(feeder.revolutions() - pulseRevs0);
+            havePulse = true;
+        }
     }
 
     /** Tuning only: keep the gate open by hand (shoot() still opens it when firing). */
@@ -355,6 +378,10 @@ public final class RobotSys {
         telemetry.addData("Gate / feeding", "%s / %b%s  (feeds %d)",
                 gate.wantsOpen() ? "OPEN" : "closed",
                 feeder.isFeeding(), feeder.isFeeding() && forced ? " (FORCED)" : "", feeder.feeds());
+            telemetry.addData("Pulse (live)", "%.2f feeder rotations in %.2f s",
+                    Math.abs(feeder.revolutions() - pulseRevs0), System.nanoTime() * 1e-9 - pulseT0);
+            telemetry.addData("Last pulse", "%.2f feeder rotations in %.2f s", lastPulseRevs, lastPulseSec);
+
         shooter.addTelemetry(telemetry);
     }
 }
