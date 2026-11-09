@@ -69,7 +69,6 @@ public class pedrotest2 extends LinearOpMode {
                 a.follow(a.lineConstantHeading(start, p1), LEG_TIMEOUT_MS),
                 shootHere(a),
                 a.intakeOn(),
-                a.in
                 a.follow(a.lineConstantHeading(p1, p2), LEG_TIMEOUT_MS),
                 shootHere(a),
                 a.follow(a.lineConstantHeading(p2, p3), LEG_TIMEOUT_MS),
