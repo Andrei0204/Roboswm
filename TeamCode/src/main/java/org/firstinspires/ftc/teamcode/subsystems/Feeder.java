@@ -12,7 +12,7 @@ import org.firstinspires.ftc.teamcode.config.ShooterConstants;
  * <p>{@link #update} feeds in pulses (one ball each) lasting FEEDER_PULSE_SEC seconds
  * (timer only); a new pulse starts only
  * when the previous one has ended and a feed is still requested. A started pulse always finishes,
- * so a ball is never left half-fed. After each pulse the feeder rests FEEDER_GAP_SEC before the
+ * so a ball is never left half-fed. After each pulse the feeder rests the gap from FEEDER_GAP_TABLE (by HIVE distance; FEEDER_GAP_SEC fallback) before the
  * next one, for normal and forced fire alike. With FEEDER_PULSE_SEC <= 0 it feeds for as long as requested.
  */
 public final class Feeder {
@@ -56,13 +56,21 @@ public final class Feeder {
      * @return true if a new feed started this loop
      */
     public boolean update(boolean requested) {
+        return update(requested, Double.NaN);
+    }
+
+    /**
+     * Same, with the distance to the HIVE (in) choosing the gap after the pulse from
+     * FEEDER_GAP_TABLE (NaN = FEEDER_GAP_SEC).
+     */
+    public boolean update(boolean requested, double distanceIn) {
         double now = System.nanoTime() * 1e-9;
         boolean started = false;
         double pulse = ShooterConstants.FEEDER_PULSE_SEC;
         if (pulse > 0.0) {
             if (feeding && now >= feedEnd) {
                 feeding = false;
-                nextStart = feedEnd + Math.max(0.0, ShooterConstants.FEEDER_GAP_SEC);
+                nextStart = feedEnd + gapSec(distanceIn);
             }
             if (!feeding && requested && now >= nextStart) {
                 feeding = true;
@@ -76,6 +84,28 @@ public final class Feeder {
         if (started) feeds++;
         set(feeding);
         return started;
+    }
+
+    /** Gap after a pulse (s) for this HIVE distance (in). */
+    public static double gapSec(double distanceIn) {
+        double[][] t = ShooterConstants.FEEDER_GAP_TABLE;
+        double gap = ShooterConstants.FEEDER_GAP_SEC;
+        if (t != null && t.length >= 1 && !Double.isNaN(distanceIn)) {
+            if (distanceIn <= t[0][0]) {
+                gap = t[0][1];
+            } else if (distanceIn >= t[t.length - 1][0]) {
+                gap = t[t.length - 1][1];
+            } else {
+                for (int i = 1; i < t.length; i++) {
+                    if (distanceIn <= t[i][0]) {
+                        double f = (distanceIn - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
+                        gap = t[i - 1][1] + f * (t[i][1] - t[i - 1][1]);
+                        break;
+                    }
+                }
+            }
+        }
+        return Math.max(0.0, gap);
     }
 
     public boolean isFeeding() {

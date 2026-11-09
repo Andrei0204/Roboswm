@@ -150,7 +150,7 @@ public final class  ShooterConstants {
      */
     public static double FLYWHEEL_RPM_FILTER = 1;
     /** When more than this far BELOW target (e.g. right after a shot), apply full power. */
-    public static double FLYWHEEL_BANG_BANG_RPM = 40;
+    public static double FLYWHEEL_BANG_BANG_RPM = 50;
     /** The flywheel counts as "at speed" inside [target - BELOW, target + ABOVE]. */
     public static double FLYWHEEL_TOLERANCE_BELOW_RPM = 300; //am modificat de la 100
     public static double FLYWHEEL_TOLERANCE_ABOVE_RPM = 300; //si aici
@@ -219,11 +219,19 @@ public final class  ShooterConstants {
      */
     public static double FEEDER_PULSE_SEC =0.05;
     /*
-     * Rest between two pulses (balls), counted from the end of a pulse. It applies to normal and
+     * Default rest between two pulses (balls), used when FEEDER_GAP_TABLE is empty or the distance is unknown. Counted from the end of a pulse. It applies to normal and
      * force fire alike, so balls leave one at a time even when a button is held. Ignored when
      * FEEDER_PULSE_SEC <= 0.
      */
-    public static double FEEDER_GAP_SEC = 0.07;
+    public static double FEEDER_GAP_SEC = 0;
+    /**
+     * Gap by distance to the HIVE: { distance (in), gap after a pulse (s) }, strictly increasing
+     * distances, linearly interpolated, clamped to the end rows. Same distance as the shot tables
+     * (virtual distance from the turret). Empty = always use FEEDER_GAP_SEC. TUNE per distance.
+     */
+    public static double[][] FEEDER_GAP_TABLE = {
+
+    };
     /*
      * Closed-loop feeder speed while shooting, so every ball is pushed at the same speed whatever
      * the battery or the load. Needs the feeder to be a motor with its encoder plugged into the
@@ -324,20 +332,17 @@ public final class  ShooterConstants {
      */
     public static double[][] SHOT_TABLE_POLLEN = {
 
-            {24.3,1770,0.304,0.5},
-            {31.2,1760,0.299,0.5},
-            {34.6,1783,0.29,0.5},
-            {37.1,1800,0.284,0.5},
-            {43.7,1830,0.274,0.5},
-            {50,1830,0.274,0.5},
 
-//            {28.4,1750,0.310,0.6},
-//            {33.9,1730 ,0.288,0.6},
-//            {38,1805,0.282,0.6},
-//            {42.2,1791,0.273,0.6},
-//            {45.5,1830,0.270,0.6},
-//            {48.6,1810,0.270,0.6},
-//            {52,1830,0.270,0.6}
+            {28.3, 2150, 0.300, 0.6},
+            {35.7, 2190, 0.290, 0.6},
+            {37.1,1800,0.284,0.5},
+            {37.6, 2220, 0.280, 0.6},
+            {44.7, 2310, 0.270, 0.6},
+            {44.9, 2300, 0.272, 0.6},
+            {47.0, 2300, 0.280, 0.6},
+            {48.5, 2280, 0.272, 0.6},
+            {52.6, 2360, 0.270, 0.6},
+            {63.7, 2440, 0.270, 0.6},
 
 
 

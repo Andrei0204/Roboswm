@@ -34,9 +34,17 @@ public final class BioBuzzField {
      */
     public static double FIELD_CENTER_IN = 72.0;
     /** Field center to each HIVE centerline, toward that alliance's wall (centerlines are 25.5 in apart). MEASURE. */
-    public static double HIVE_SIDE_OFFSET_IN = 13;
+    public static double HIVE_SIDE_OFFSET_IN = 10;
     /** Field center to a CELL opening center along the audience-rear axis (manual figures give 16.5-18.1). MEASURE. */
     public static double CELL_OPENING_AXIAL_OFFSET_IN = 20;
+    /**
+     * The red REAR CELL sits this much farther back (+y, toward the rear wall) than the red
+     * AUDIENCE CELL is from the center, i.e. the rear opening is at center + axial offset + this.
+     * MEASURE. Applied to red only; set BLUE_AUDIENCE_CELL_BACK_OFFSET_IN too if blue is the same.
+     */
+    public static double RED_REAR_CELL_BACK_OFFSET_IN = -8.0;
+    /** Extra offset of the blue AUDIENCE CELL toward the audience (-y). 0 = none. MEASURE. */
+    public static double BLUE_AUDIENCE_CELL_BACK_OFFSET_IN = 0.0;
     /** CELL opening center height above the tiles. Informational: the shot table is calibrated against it. */
     public static double CELL_OPENING_HEIGHT_IN = 58.4;
     /** Width of the pentagonal CELL opening (14 in tall, 12 in deep). Aim at its lateral center. */
@@ -65,9 +73,12 @@ public final class BioBuzzField {
 
     /** Aim point y (Pedro, inches) of an alliance's CELL opening center. */
     public static double aimY(Alliance alliance, HiveCell cell) {
-        return cell == HiveCell.AUDIENCE
-                ? FIELD_CENTER_IN - CELL_OPENING_AXIAL_OFFSET_IN
-                : FIELD_CENTER_IN + CELL_OPENING_AXIAL_OFFSET_IN;
+        if (cell == HiveCell.AUDIENCE) {
+            double extra = alliance == Alliance.BLUE ? BLUE_AUDIENCE_CELL_BACK_OFFSET_IN : 0.0;
+            return FIELD_CENTER_IN - CELL_OPENING_AXIAL_OFFSET_IN - extra;
+        }
+        double extra = alliance == Alliance.RED ? RED_REAR_CELL_BACK_OFFSET_IN : 0.0;
+        return FIELD_CENTER_IN + CELL_OPENING_AXIAL_OFFSET_IN + extra;
     }
 
     /**

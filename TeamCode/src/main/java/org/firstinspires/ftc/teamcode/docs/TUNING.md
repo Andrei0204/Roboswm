@@ -221,7 +221,7 @@ After that the limits are **not** applied, so move in small steps.
    - Exactly one ball must leave.
    - The ball doesn't fully leave → raise `FEEDER_PULSE_SEC`.
    - Two leave → lower it.
-   - Balls come out too fast/jammed together → raise `FEEDER_GAP_SEC` (rest between balls, normal and force fire alike).
+   - Balls come out too fast/jammed together → raise the gap in `FEEDER_GAP_TABLE` for that distance (rest between balls by HIVE distance; `FEEDER_GAP_SEC` is the fallback).
    - If balls creep into the flywheel while idle, set `FEEDER_IDLE_POWER` slightly negative
      (about −0.1).
 

@@ -167,7 +167,7 @@ public final class RobotSys {
             feeder.set(true);
             return;
         }
-        if (feeder.update(wanted && gate.isOpen())) forced = !normal;
+        if (feeder.update(wanted && gate.isOpen(), hiveDistanceIn())) forced = !normal;
         if (!feeder.isFeeding()) forced = false;
         trackPulse();
         shooter.flywheel().setFeeding(feeder.isFeeding());
@@ -194,6 +194,12 @@ public final class RobotSys {
             lastPulseRevs = Math.abs(feeder.revolutions() - pulseRevs0);
             havePulse = true;
         }
+    }
+
+    /** Virtual distance to the HIVE (in), NaN if there is no solution yet. */
+    private double hiveDistanceIn() {
+        ShotSolution s = shooter.solution();
+        return s == null ? Double.NaN : s.virtualDistance;
     }
 
     /** Tuning only: keep the gate open by hand (shoot() still opens it when firing). */
