@@ -94,6 +94,15 @@ public final class BioBuzzField {
         return new Pose(aimX(alliance, cell), aimY(alliance, cell), inwardAngle(cell));
     }
 
+    /**
+     * HIVE CELL poses as variables, computed once when the class loads from the constants above.
+     * If you change those constants at runtime, call {@link #cellPose} instead.
+     */
+    public static final Pose RED_AUDIENCE_CELL = cellPose(Alliance.RED, HiveCell.AUDIENCE);
+    public static final Pose RED_REAR_CELL = cellPose(Alliance.RED, HiveCell.REAR);
+    public static final Pose BLUE_AUDIENCE_CELL = cellPose(Alliance.BLUE, HiveCell.AUDIENCE);
+    public static final Pose BLUE_REAR_CELL = cellPose(Alliance.BLUE, HiveCell.REAR);
+
     /** Poses of every CELL of one alliance's HIVE, keyed by CELL. */
     public static Map<HiveCell, Pose> hivePoses(Alliance alliance) {
         Map<HiveCell, Pose> poses = new EnumMap<>(HiveCell.class);
