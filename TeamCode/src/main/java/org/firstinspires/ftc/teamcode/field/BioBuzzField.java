@@ -44,7 +44,7 @@ public final class BioBuzzField {
      * AUDIENCE CELL is from the center, i.e. the rear opening is at center + axial offset + this.
      * MEASURE. Applied to red only; set BLUE_AUDIENCE_CELL_BACK_OFFSET_IN too if blue is the same.
      */
-    public static double RED_REAR_CELL_BACK_OFFSET_IN = -8.0;
+    public static double RED_REAR_CELL_BACK_OFFSET_IN = 0.0;
     /** Extra offset of the blue AUDIENCE CELL toward the audience (-y). 0 = none. MEASURE. */
     public static double BLUE_AUDIENCE_CELL_BACK_OFFSET_IN = 0.0;
     /** CELL opening center height above the tiles. Informational: the shot table is calibrated against it. */
@@ -88,10 +88,10 @@ public final class BioBuzzField {
      * direction a ball must travel to enter). These are fixed numbers: they do NOT follow the
      * constants above, so update them by hand if you re-measure.
      */
-    public static final Pose RED_AUDIENCE_CELL = new Pose(62, 52, Math.PI / 2);
-    public static final Pose RED_REAR_CELL = new Pose(62, 84, -Math.PI / 2);
-    public static final Pose BLUE_AUDIENCE_CELL = new Pose(82, 52, Math.PI / 2);
-    public static final Pose BLUE_REAR_CELL = new Pose(82, 92, -Math.PI / 2);
+    public static final Pose RED_AUDIENCE_CELL = new Pose(57.63, 55.31, Math.PI / 2);
+    public static final Pose RED_REAR_CELL = new Pose(57.87, 87.98, -Math.PI / 2);
+    public static final Pose BLUE_AUDIENCE_CELL = new Pose(84.82, 52.78, Math.PI / 2);
+    public static final Pose BLUE_REAR_CELL = new Pose(84.10, 89.05, -Math.PI / 2);
 
     /**
      * Field direction (radians) a ball must travel, horizontally, to go INTO the CELL. The

@@ -9,7 +9,11 @@ import com.pedropathing.ivy.pedro.PedroCommands;
 import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 
+import com.qualcomm.robotcore.util.RobotLog;
+
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.aiming.BallType;
+import org.firstinspires.ftc.teamcode.aiming.ShotSolution;
 import org.firstinspires.ftc.teamcode.field.Alliance;
 import org.firstinspires.ftc.teamcode.field.BioBuzzField;
 import org.firstinspires.ftc.teamcode.field.HiveCell;
@@ -329,5 +333,115 @@ public final class AutoBlocks {
     /** Repeat a command {@code times} times. */
     public static Command repeat(Command command, int times) {
         return Groups.repeat(command, times);
+    }
+
+    // ------------------------------------------------------------------ strict readiness (added)
+    /** Robot counts as stopped below these speeds (linear in/s, angular rad/s). TUNE on the robot. */
+    public static double SETTLE_MAX_LIN_IN_PER_SEC = 2.0;
+    public static double SETTLE_MAX_ANG_RAD_PER_SEC = 0.10;
+    /** Consecutive loops the robot must stay stopped / fully ready. */
+    public static int SETTLE_LOOPS = 5;
+    public static int STRICT_READY_LOOPS = 3;
+
+    private int settledLoops;
+    private int strictLoops;
+    private boolean strictOk;
+    private int skippedShots;
+    private String lastSkipReason = "-";
+
+    private double linSpeed() {
+        return Math.hypot(robot.follower().velocity().vx, robot.follower().velocity().vy);
+    }
+
+    private double angSpeed() {
+        return Math.abs(robot.follower().velocity().omega);
+    }
+
+    private boolean robotStill() {
+        return linSpeed() < SETTLE_MAX_LIN_IN_PER_SEC && angSpeed() < SETTLE_MAX_ANG_RAD_PER_SEC;
+    }
+
+    /** Empty string when everything needed to shoot is true right now, else what is still false. */
+    public String notReadyReason() {
+        StringBuilder r = new StringBuilder();
+        ShotSolution s = robot.solution();
+        if (!robot.isArmed()) r.append("not armed; ");
+        if (!robot.shooter().turret().hasReference() || robot.shooter().turret().isHoming()) {
+            r.append("turret not homed; ");
+        }
+        if (s == null) {
+            r.append("no solution; ");
+        } else {
+            if (!s.valid) r.append("solution: ").append(s.describeProblems()).append("; ");
+            if (!robot.shooter().turret().isAimed(s.allowedAimError)) r.append("turret not aimed; ");
+        }
+        if (!robot.shooter().flywheel().atSpeed()) r.append("flywheel not at speed; ");
+        if (!robot.shooter().hood().isSettled()) r.append("hood not settled; ");
+        if (!robotStill()) r.append("robot moving; ");
+        if (r.length() == 0 && !robot.isReady()) r.append("debounce or HIVE TIP pause; ");
+        return r.toString();
+    }
+
+    /** Done when the robot has really stopped (speed under the thresholds for SETTLE_LOOPS loops), or after timeoutMs. */
+    public Command waitSettled(double timeoutMs) {
+        Command settle = Command.build()
+                .setStart(() -> settledLoops = 0)
+                .setExecute(() -> settledLoops = robotStill() ? settledLoops + 1 : 0)
+                .setDone(() -> settledLoops >= SETTLE_LOOPS)
+                .setEnd(e -> { });
+        return Groups.race(settle, Commands.waitMs(timeoutMs));
+    }
+
+    /**
+     * Like {@link #waitReady} but strict: needs ready AND stopped for STRICT_READY_LOOPS loops in a
+     * row. On timeout it just ends with {@code strictOk} false (use {@link #shootStrict}).
+     */
+    public Command waitReadyStrict(double timeoutMs) {
+        Command ready = Command.build()
+                .setStart(() -> {
+                    strictLoops = 0;
+                    strictOk = false;
+                })
+                .setExecute(() -> {
+                    strictLoops = notReadyReason().isEmpty() ? strictLoops + 1 : 0;
+                    if (strictLoops >= STRICT_READY_LOOPS) strictOk = true;
+                })
+                .setDone(() -> strictOk)
+                .setEnd(e -> { });
+        return Groups.race(ready, Commands.waitMs(timeoutMs));
+    }
+
+    /**
+     * Settle, then strict ready, then fire for {@code ms}. If still not ready after the timeouts,
+     * it does NOT fire: it logs why (telemetry + logcat) and moves on.
+     */
+    public Command shootStrict(double ms, double settleTimeoutMs, double readyTimeoutMs) {
+        return sequence(
+                waitSettled(settleTimeoutMs),
+                waitReadyStrict(readyTimeoutMs),
+                either(() -> strictOk,
+                        shoot(ms),
+                        Commands.instant(() -> {
+                            skippedShots++;
+                            lastSkipReason = notReadyReason();
+                            RobotLog.ww("AutoBlocks", "SHOT SKIPPED (#" + skippedShots + "): " + lastSkipReason);
+                        })));
+    }
+
+    /** Debug telemetry for AUTO. Call every loop after robot.addTelemetry(telemetry). */
+    public void addAutoDebug(Telemetry t) {
+        ShotSolution s = robot.solution();
+        if (s == null) return;
+        t.addData("AUTO real distance", "%.1f in", s.realDistance);
+        t.addData("AUTO rpm target / measured", "%.0f / %.0f",
+                robot.shooter().flywheel().targetRpm(), robot.shooter().flywheel().measuredRpm());
+        t.addData("AUTO hood target / current", "%.3f / %.3f",
+                s.hoodPosition, robot.shooter().hood().commandedPosition());
+        t.addData("AUTO turret error / allowed", "%.2f / %.2f deg",
+                Math.toDegrees(robot.shooter().turret().error()), Math.toDegrees(s.allowedAimError));
+        t.addData("AUTO speed lin / ang", "%.1f in/s / %.2f rad/s", linSpeed(), angSpeed());
+        String why = notReadyReason();
+        t.addData("AUTO not ready because", why.isEmpty() ? "READY" : why);
+        t.addData("AUTO shots skipped / last reason", "%d / %s", skippedShots, lastSkipReason);
     }
 }

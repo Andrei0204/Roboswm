@@ -30,13 +30,12 @@ public class treihiveuriparcare extends LinearOpMode {
     private final Pose point3Start = poseFactory.of(39.5414, 126.8685, 45);
     private final Pose point3 = poseFactory.of(54.8657, 120.0652, 180);
     private final Pose point4Start = poseFactory.of(54.8657, 120.0652, 180);
-    private final Pose point4 = poseFactory.of(7.6468, 89.0164, 180);
+    private final Pose point4 = poseFactory.of(9.6468, 89.0164, 180);
     private final Pose point4Control1 = poseFactory.of(29.392, 86.7399, 0);
     private final Pose point5Start = poseFactory.of(9.6468, 89.0164, 180);
     private final Pose point5 = poseFactory.of(38.9553, 17.0739, 90);
-    private final Pose point6Start = poseFactory.of(38.9553, 17.0739, 90);
-    private final Pose point6 = poseFactory.of(7.2841, 8.3711, 180);
-
+    private final Pose point6Start = poseFactory.of(38.9553, 17.0739, 180);
+    private final Pose point6 = poseFactory.of(13.5314, 94.9902, 0);
 
     /** How long to hold fire at each stop, and the max wait for the shot checks to pass. */
     private static final double SHOOT_MS = 2500;
@@ -54,6 +53,9 @@ public class treihiveuriparcare extends LinearOpMode {
             if (gamepad1.aWasPressed()) robot.servosToStart();
             robot.initLoop();
             telemetry.addData("Turret (gamepad1 Y = home)", robot.turretStatus());
+            if (!robot.shooter().turret().hasReference() || robot.shooter().turret().isHoming()) {
+                telemetry.addLine("!!! TURRET NOT HOMED - press gamepad1 Y before START !!!");
+            }
             telemetry.update();
             idle();
         }
@@ -66,6 +68,7 @@ public class treihiveuriparcare extends LinearOpMode {
         while (opModeIsActive()) {
             auto.run();   // commands, then robot.update() and robot.shoot()
             robot.addTelemetry(telemetry);
+            auto.addAutoDebug(telemetry);
             telemetry.addData("Routine", auto.isFinished(routine) ? "FINISHED" : "running");
             telemetry.update();
         }
@@ -80,11 +83,11 @@ public class treihiveuriparcare extends LinearOpMode {
                 a.hiveTipped(),
                 a.intakeFeedOn(),
                 a.follow(floare(), LEG_TIMEOUT_MS),
-                waitMs(3000),
+                waitMs(1000),
                 a.intakeFeedOff(),
                 a.follow(hive2(), LEG_TIMEOUT_MS),
                 shootHere(a),
-                a.intakeFeed(4000),
+                a.intakeFeed(2000),
                 a.follow(path3(), LEG_TIMEOUT_MS),
                 shootHere(a),
                 sequence(
@@ -92,15 +95,14 @@ public class treihiveuriparcare extends LinearOpMode {
                                 a.follow(path4(), LEG_TIMEOUT_MS),
                                 a.intakeFeedOn()
                         ),
-                        waitMs(6000)
+                        waitMs(2000)
                 ),
                 a.hiveTipped(),
                 a.follow(path5(), LEG_TIMEOUT_MS),
                 shootHere(a),
-                parallel(
-                        a.follow(path6(), LEG_TIMEOUT_MS),
-                        a.intakeFeedOn()
-                ),
+                a.follow(path6(), LEG_TIMEOUT_MS),
+
+
 
 
 
@@ -119,9 +121,7 @@ public class treihiveuriparcare extends LinearOpMode {
 
     /** The shoot command: wait until ready, then fire. */
     private Command shootHere(AutoBlocks a) {
-        return sequence(
-                a.waitReady(READY_TIMEOUT_MS),
-                a.shoot(SHOOT_MS));
+        return a.shootStrict(SHOOT_MS, 3000, 4000);
     }
 
 
