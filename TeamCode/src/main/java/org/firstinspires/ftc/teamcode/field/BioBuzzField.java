@@ -2,9 +2,6 @@ package org.firstinspires.ftc.teamcode.field;
 
 import com.pedropathing.math.Pose;
 
-import java.util.EnumMap;
-import java.util.Map;
-
 /**
  * BIOBUZZ (FTC 2026-2027) field geometry, in the Pedro field frame.
  *
@@ -87,30 +84,14 @@ public final class BioBuzzField {
     }
 
     /**
-     * Pose of an alliance's CELL opening center: x, y from {@link #aimX}/{@link #aimY}, heading =
-     * {@link #inwardAngle} (the direction a ball must travel to enter that CELL).
+     * HIVE CELL opening poses as plain coordinates (Pedro frame, inches, heading in radians =
+     * direction a ball must travel to enter). These are fixed numbers: they do NOT follow the
+     * constants above, so update them by hand if you re-measure.
      */
-    public static Pose cellPose(Alliance alliance, HiveCell cell) {
-        return new Pose(aimX(alliance, cell), aimY(alliance, cell), inwardAngle(cell));
-    }
-
-    /**
-     * HIVE CELL poses as variables, computed once when the class loads from the constants above.
-     * If you change those constants at runtime, call {@link #cellPose} instead.
-     */
-    public static final Pose RED_AUDIENCE_CELL = cellPose(Alliance.RED, HiveCell.AUDIENCE);
-    public static final Pose RED_REAR_CELL = cellPose(Alliance.RED, HiveCell.REAR);
-    public static final Pose BLUE_AUDIENCE_CELL = cellPose(Alliance.BLUE, HiveCell.AUDIENCE);
-    public static final Pose BLUE_REAR_CELL = cellPose(Alliance.BLUE, HiveCell.REAR);
-
-    /** Poses of every CELL of one alliance's HIVE, keyed by CELL. */
-    public static Map<HiveCell, Pose> hivePoses(Alliance alliance) {
-        Map<HiveCell, Pose> poses = new EnumMap<>(HiveCell.class);
-        for (HiveCell cell : HiveCell.values()) {
-            poses.put(cell, cellPose(alliance, cell));
-        }
-        return poses;
-    }
+    public static final Pose RED_AUDIENCE_CELL = new Pose(62, 52, Math.PI / 2);
+    public static final Pose RED_REAR_CELL = new Pose(62, 84, -Math.PI / 2);
+    public static final Pose BLUE_AUDIENCE_CELL = new Pose(82, 52, Math.PI / 2);
+    public static final Pose BLUE_REAR_CELL = new Pose(82, 92, -Math.PI / 2);
 
     /**
      * Field direction (radians) a ball must travel, horizontally, to go INTO the CELL. The
