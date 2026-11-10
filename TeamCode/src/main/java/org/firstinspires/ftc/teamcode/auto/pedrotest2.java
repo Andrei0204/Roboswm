@@ -17,7 +17,7 @@ public class pedrotest2 extends LinearOpMode {
     // x, y, heading (deg) - RED alliance
     private static final double[] START = {7.7243, 7.4648, -90};
     private static final double[] aruncare1 = {30.8679, 14.082, 90};
-    private static final double[] POINT2 = {7.4243, 7.0048, -90};
+    private static final double[] POINT2 = {9.83, 95.36, 180};
     private static final double[] POINT3 = {30.8679, 14.082, 90};
     private static final double[] POINT4 = {118.4712, 24.5502, 90};
 

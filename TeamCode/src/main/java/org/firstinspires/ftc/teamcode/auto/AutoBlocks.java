@@ -243,6 +243,39 @@ public final class AutoBlocks {
         return Groups.parallel(intakeMode(mode), intakeOn());
     }
 
+    /**
+     * Take balls in ONLY: intake on, feeder not driven, gate forced closed so nothing goes past
+     * it. Stays on until {@link #intakeOff} (or {@link #stopCollecting}).
+     */
+    public Command takeBallsGateClosed() {
+        return Commands.instant(() -> {
+            robot.setManualFeed(false);
+            robot.gate().close();
+            robot.intake().setManual(true);
+        });
+    }
+
+    /**
+     * LOAD balls without shooting: intake and feeder run together while the gate stays CLOSED,
+     * so the balls are taken in and moved up but never launched. Stays on until {@link #intakeFeedOff}.
+     */
+    public Command intakeFeedOn() {
+        return Commands.instant(() -> {
+            robot.gate().close();
+            robot.setManualFeed(true);
+        });
+    }
+
+    /** Stop loading (intake and feeder off). */
+    public Command intakeFeedOff() {
+        return Commands.instant(() -> robot.setManualFeed(false));
+    }
+
+    /** Load balls (gate closed, no shooting) for {@code ms}, then stop. */
+    public Command intakeFeed(double ms) {
+        return Groups.sequential(intakeFeedOn(), Commands.waitMs(ms), intakeFeedOff());
+    }
+
     /** Motor off and servo back to INIT. */
     public Command stopCollecting() {
         return Groups.parallel(intakeOff(), intakeMode(IntakeServo.Mode.INIT));

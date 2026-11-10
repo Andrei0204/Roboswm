@@ -164,6 +164,9 @@ public final class RobotSys {
         // only starts a pulse once the gate is open.
         gate.update(wanted || feeder.isFeeding() || manualGateOpen);
         if (manualFeed && !wanted) {
+            // Let the feeder finish/clear any shot pulse first, otherwise its "feeding" flag stays
+            // stuck true and keeps the gate open for as long as manual feed runs.
+            feeder.update(false, hiveDistanceIn());
             feeder.set(true);
             return;
         }
