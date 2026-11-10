@@ -1,5 +1,10 @@
 package org.firstinspires.ftc.teamcode.field;
 
+import com.pedropathing.math.Pose;
+
+import java.util.EnumMap;
+import java.util.Map;
+
 /**
  * BIOBUZZ (FTC 2026-2027) field geometry, in the Pedro field frame.
  *
@@ -79,6 +84,23 @@ public final class BioBuzzField {
         }
         double extra = alliance == Alliance.RED ? RED_REAR_CELL_BACK_OFFSET_IN : 0.0;
         return FIELD_CENTER_IN + CELL_OPENING_AXIAL_OFFSET_IN + extra;
+    }
+
+    /**
+     * Pose of an alliance's CELL opening center: x, y from {@link #aimX}/{@link #aimY}, heading =
+     * {@link #inwardAngle} (the direction a ball must travel to enter that CELL).
+     */
+    public static Pose cellPose(Alliance alliance, HiveCell cell) {
+        return new Pose(aimX(alliance, cell), aimY(alliance, cell), inwardAngle(cell));
+    }
+
+    /** Poses of every CELL of one alliance's HIVE, keyed by CELL. */
+    public static Map<HiveCell, Pose> hivePoses(Alliance alliance) {
+        Map<HiveCell, Pose> poses = new EnumMap<>(HiveCell.class);
+        for (HiveCell cell : HiveCell.values()) {
+            poses.put(cell, cellPose(alliance, cell));
+        }
+        return poses;
     }
 
     /**
