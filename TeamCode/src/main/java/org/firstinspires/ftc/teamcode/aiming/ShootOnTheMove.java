@@ -285,6 +285,14 @@ public final class ShootOnTheMove {
         telemetry.addData("Problems", s.describeProblems());
         telemetry.addData("Distance real / virtual", "%.1f / %.1f in", s.realDistance, s.virtualDistance);
         telemetry.addData("TOF / lead / iterations", "%.3f s / %.3f s / %d", s.timeOfFlight, s.leadTime, s.iterations);
+        double hiveDx = BioBuzzField.aimX(alliance, hive.upCell()) - s.turretX;
+        double hiveDy = BioBuzzField.aimY(alliance, hive.upCell()) - s.turretY;
+        double hiveFieldAngle = Math.atan2(hiveDy, hiveDx);
+        double hiveTurretAngle = Math.atan2(Math.sin(hiveFieldAngle - s.predictedHeading),
+                Math.cos(hiveFieldAngle - s.predictedHeading));
+        telemetry.addData("Hive dx / dy (turret->hive)", "%.1f / %.1f in", hiveDx, hiveDy);
+        telemetry.addData("Hive angle field / rel. robot", "%.1f / %.1f deg",
+                Math.toDegrees(hiveFieldAngle), Math.toDegrees(hiveTurretAngle));
         telemetry.addData("Approach angle", "%.1f deg", Math.toDegrees(s.approachAngle));
         if (turret.isHoming() || !turret.hasReference()) {
             telemetry.addData("Turret", turretStatus());

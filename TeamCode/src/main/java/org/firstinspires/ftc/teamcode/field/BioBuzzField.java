@@ -36,9 +36,9 @@ public final class BioBuzzField {
      */
     public static double FIELD_CENTER_IN = 72.0;
     /** Field center to each HIVE centerline, toward that alliance's wall (centerlines are 25.5 in apart). MEASURE. */
-    public static double HIVE_SIDE_OFFSET_IN = 10;
+    public static double HIVE_SIDE_OFFSET_IN = 12.75;   //era 10 bucur  injura ma mami
     /** Field center to a CELL opening center along the audience-rear axis (manual figures give 16.5-18.1). MEASURE. */
-    public static double CELL_OPENING_AXIAL_OFFSET_IN = 20;
+    public static double CELL_OPENING_AXIAL_OFFSET_IN = 16.0;  //era 20
     /**
      * The red REAR CELL sits this much farther back (+y, toward the rear wall) than the red
      * AUDIENCE CELL is from the center, i.e. the rear opening is at center + axial offset + this.
@@ -66,23 +66,6 @@ public final class BioBuzzField {
     public static double RED_RESET_Y_IN = 6.9;
     public static double RED_RESET_HEADING_DEG = 0.0;
 
-    /** Aim point x (Pedro, inches) of an alliance's CELL opening center. */
-    public static double aimX(Alliance alliance, HiveCell cell) {
-        return alliance == Alliance.RED
-                ? FIELD_CENTER_IN - HIVE_SIDE_OFFSET_IN
-                : FIELD_CENTER_IN + HIVE_SIDE_OFFSET_IN;
-    }
-
-    /** Aim point y (Pedro, inches) of an alliance's CELL opening center. */
-    public static double aimY(Alliance alliance, HiveCell cell) {
-        if (cell == HiveCell.AUDIENCE) {
-            double extra = alliance == Alliance.BLUE ? BLUE_AUDIENCE_CELL_BACK_OFFSET_IN : 0.0;
-            return FIELD_CENTER_IN - CELL_OPENING_AXIAL_OFFSET_IN - extra;
-        }
-        double extra = alliance == Alliance.RED ? RED_REAR_CELL_BACK_OFFSET_IN : 0.0;
-        return FIELD_CENTER_IN + CELL_OPENING_AXIAL_OFFSET_IN + extra;
-    }
-
     /**
      * HIVE CELL opening poses as plain coordinates (Pedro frame, inches, heading in radians =
      * direction a ball must travel to enter). These are fixed numbers: they do NOT follow the
@@ -92,6 +75,22 @@ public final class BioBuzzField {
     public static final Pose RED_REAR_CELL = new Pose(57.87, 87.98, -Math.PI / 2);
     public static final Pose BLUE_AUDIENCE_CELL = new Pose(84.82, 52.78, Math.PI / 2);
     public static final Pose BLUE_REAR_CELL = new Pose(84.10, 89.05, -Math.PI / 2);
+
+    /** CELL opening pose of an alliance's HIVE. */
+    public static Pose cellPose(Alliance alliance, HiveCell cell) {
+        if (alliance == Alliance.RED) return cell == HiveCell.AUDIENCE ? RED_AUDIENCE_CELL : RED_REAR_CELL;
+        return cell == HiveCell.AUDIENCE ? BLUE_AUDIENCE_CELL : BLUE_REAR_CELL;
+    }
+
+    /** Aim point x (Pedro, inches) of an alliance's CELL opening center. */
+    public static double aimX(Alliance alliance, HiveCell cell) {
+        return cellPose(alliance, cell).x();
+    }
+
+    /** Aim point y (Pedro, inches) of an alliance's CELL opening center. */
+    public static double aimY(Alliance alliance, HiveCell cell) {
+        return cellPose(alliance, cell).y();
+    }
 
     /**
      * Field direction (radians) a ball must travel, horizontally, to go INTO the CELL. The

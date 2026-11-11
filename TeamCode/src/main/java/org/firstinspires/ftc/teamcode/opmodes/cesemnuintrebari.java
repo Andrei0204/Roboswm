@@ -44,15 +44,17 @@ public class cesemnuintrebari extends LinearOpMode {
         if (!fromAuto) robot.resetPoseToCorner();
 
         while (opModeInInit()) {
-            if (!fromAuto) {
-                Alliance chosen = gamepad1.x ? Alliance.BLUE : gamepad1.b ? Alliance.RED : robot.alliance();
-                if (chosen != robot.alliance()) {
-                    robot.setAlliance(chosen);
-                    robot.resetPoseToCorner();
-                }
+            Alliance chosen = gamepad1.x ? Alliance.BLUE : gamepad1.b ? Alliance.RED : robot.alliance();
+            if (chosen != robot.alliance()) {
+                robot.setAlliance(chosen);
+                robot.resetPoseToCorner();
             }
+            // Target CELL: dpad left = AUDIENCE, dpad right = REAR (set after the alliance pick).
+            if (gamepad1.dpad_left) robot.setUpCell(org.firstinspires.ftc.teamcode.field.HiveCell.AUDIENCE);
+            if (gamepad1.dpad_right) robot.setUpCell(org.firstinspires.ftc.teamcode.field.HiveCell.REAR);
             if (gamepad1.yWasPressed()) robot.homeTurret();
             robot.initLoop();
+            telemetry.addData("Target CELL (dpad left = AUDIENCE, right = REAR)", robot.upCell());
             telemetry.addData("Alliance", robot.alliance());
             telemetry.addData("Start pose", fromAuto ? "stored by previous OpMode" : "reset corner");
             telemetry.addData("Turret (gamepad1 Y = home)", robot.turretStatus());
@@ -84,7 +86,7 @@ public class cesemnuintrebari extends LinearOpMode {
             // gamepad1 B: turret toggles between exactly RIGHT (-90 deg from robot front) and tracking the CELL.
             if (gamepad1.bWasPressed()) turretRight = !turretRight;
             robot.setTurretOverride(turretRight
-                    ? Math.toRadians(-90.0 - ShooterConstants.TURRET_ZERO_OFFSET_DEG) : Double.NaN);
+                    ? Math.toRadians(0 - ShooterConstants.TURRET_ZERO_OFFSET_DEG) : Double.NaN);
             //if (gamepad1.xWasPressed() && ShooterConstants.SHOOTS_NECTAR) robot.setNextBall(robot.nextBall().other());//mod
             if (gamepad1.backWasPressed()) robot.resetPoseToCorner();
             ShotSolution s = robot.solution();
@@ -107,6 +109,7 @@ public class cesemnuintrebari extends LinearOpMode {
             s = robot.solution();
             ball = robot.nextBall();
             telemetry.addData("flywheel",robot.shooter().flywheel().measuredRpm());
+            telemetry.addData("Alliance / target CELL (B = switch)", "%s / %s", robot.alliance(), robot.upCell());
             telemetry.addData("Ball (X to switch)", ball);
             telemetry.addData("Distance pivot->CELL", "%.1f in  (record while STILL)", s.realDistance);
             telemetry.addData("Override rpm / hood", "%.0f / %.3f", rpm, hood);

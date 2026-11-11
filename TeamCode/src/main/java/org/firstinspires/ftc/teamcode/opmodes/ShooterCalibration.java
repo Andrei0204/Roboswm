@@ -44,17 +44,20 @@ public class ShooterCalibration extends LinearOpMode {
         if (!fromAuto) robot.resetPoseToCorner();
 
         while (opModeInInit()) {
-            if (!fromAuto) {
-                Alliance chosen = gamepad1.x ? Alliance.BLUE : gamepad1.b ? Alliance.RED : robot.alliance();
-                if (chosen != robot.alliance()) {
-                    robot.setAlliance(chosen);
-                    robot.resetPoseToCorner();
-                }
+            // Alliance can always be re-picked (same as Shoot On The Move), even with a stored pose.
+            Alliance chosen = gamepad1.x ? Alliance.BLUE : gamepad1.b ? Alliance.RED : robot.alliance();
+            if (chosen != robot.alliance()) {
+                robot.setAlliance(chosen);
+                robot.resetPoseToCorner();
             }
+            // Target CELL: dpad left = AUDIENCE, dpad right = REAR (set after the alliance pick).
+            if (gamepad1.dpad_left) robot.setUpCell(org.firstinspires.ftc.teamcode.field.HiveCell.AUDIENCE);
+            if (gamepad1.dpad_right) robot.setUpCell(org.firstinspires.ftc.teamcode.field.HiveCell.REAR);
             if (gamepad1.yWasPressed()) robot.homeTurret();
             robot.initLoop();
+            telemetry.addData("Target CELL (dpad left = AUDIENCE, right = REAR)", robot.upCell());
             telemetry.addData("Alliance", robot.alliance());
-            telemetry.addData("Start pose", fromAuto ? "stored by previous OpMode" : "reset corner");
+            telemetry.addData("Start pose", fromAuto ? "stored by previous OpMode (X/B = re-pick side, resets to corner)" : "reset corner");
             telemetry.addData("Turret (gamepad1 Y = home)", robot.turretStatus());
             telemetry.update();
             idle();
@@ -107,6 +110,7 @@ public class ShooterCalibration extends LinearOpMode {
             s = robot.solution();
             ball = robot.nextBall();
             telemetry.addData("flywheel",robot.shooter().flywheel().measuredRpm());
+            telemetry.addData("Alliance / target CELL (B = switch)", "%s / %s", robot.alliance(), robot.upCell());
             telemetry.addData("Ball (X to switch)", ball);
             telemetry.addData("Distance pivot->CELL", "%.1f in  (record while STILL)", s.realDistance);
             telemetry.addData("Override rpm / hood", "%.0f / %.3f", rpm, hood);

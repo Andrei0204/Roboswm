@@ -28,7 +28,7 @@ public abstract class treihiveuriparcareBase extends LinearOpMode {
     // Poses written for RED (x, y, heading in deg). BLUE is rotated automatically by rot().
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    private final Pose start = poseFactory.of(36.1622, 8.6704, 180);
+    private final Pose start = poseFactory.of(40, 6.2, 180);
     private final Pose floare = poseFactory.of(14.8893, 46.7661, 180);
     private final Pose hive2Start = poseFactory.of(14.8893, 46.7661, 180);
     private final Pose hive2 = poseFactory.of(39.5414, 126.8685, 45);
@@ -40,7 +40,7 @@ public abstract class treihiveuriparcareBase extends LinearOpMode {
     private final Pose point5Start = poseFactory.of(9.6468, 89.0164, 180);
     private final Pose point5 = poseFactory.of(38.9553, 17.0739, 90);
     private final Pose point6Start = poseFactory.of(38.9553, 17.0739, 180);
-    private final Pose point6 = poseFactory.of(13.5314, 94.9902, 0);
+    private final Pose point6 = poseFactory.of(13.5314, 94.9902, 180);
 
 
     /** A RED pose, rotated 180 deg about the field center when the alliance is BLUE. */
