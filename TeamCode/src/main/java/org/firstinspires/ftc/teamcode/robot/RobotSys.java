@@ -136,6 +136,22 @@ public final class RobotSys {
     }
 
     /**
+     * Field-centric TeleOp driving. forward/left are in the driver's frame (+forward away from our
+     * alliance wall, +left); they are rotated by the Pedro heading into robot-centric powers.
+     * Blue is mirrored (forward = -x), so the driver always pushes "away from their wall".
+     * Press the pose reset button (robot in the reset corner) to re-zero the heading.
+     */
+    public void driveFieldCentric(double forward, double left, double turn) {
+        double s = alliance == Alliance.RED ? 1.0 : -1.0;
+        double h = follower.pose().heading();
+        double cos = Math.cos(h);
+        double sin = Math.sin(h);
+        double robotForward = s * (forward * cos + left * sin);
+        double robotLeft = s * (-forward * sin + left * cos);
+        follower.manual(robotForward, robotLeft, turn);
+    }
+
+    /**
      * One robot cycle, without shooting: Pedro update, aiming (turret, flywheel, hood), intake,
      * and the pose saved for the next OpMode. Call once per loop, then {@link #shoot}.
      */
@@ -298,6 +314,11 @@ public final class RobotSys {
         shooter.setCalibrationOverride(rpm, hoodPosition);
     }
 
+    /** Calibration only: fixed turret angle in rad (turret frame); NaN = track the CELL. */
+    public void setTurretOverride(double angleRad) {
+        shooter.setTurretOverride(angleRad);
+    }
+
     public void clearCalibrationOverride() {
         shooter.clearCalibrationOverride();
     }
@@ -364,6 +385,7 @@ public final class RobotSys {
     public void addTelemetry(Telemetry telemetry) {
         Pose pose = follower.pose();
         telemetry.addData("Pose", "x %.1f  y %.1f  h %.1f deg", pose.x(), pose.y(), Math.toDegrees(pose.heading()));
+        org.firstinspires.ftc.teamcode.field.StopLog.addTelemetry(telemetry);
         // Turret: its angle on the robot and on the field, and where its pivot is on the field.
         double turretRad = shooter.turretAngle();
         if (Double.isNaN(turretRad)) {

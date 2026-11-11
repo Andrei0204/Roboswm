@@ -50,6 +50,7 @@ public final class ShootOnTheMove {
     private boolean armed;
     private double overrideRpm = Double.NaN;
     private double overrideHood = Double.NaN;
+    private double overrideTurretRad = Double.NaN;
 
     private long lastNanos;
     private double voltage = ShooterConstants.NOMINAL_VOLTAGE;
@@ -123,7 +124,11 @@ public final class ShootOnTheMove {
                 BioBuzzField.inwardAngle(cell), nextBall);
 
         double voltageScale = ShooterConstants.NOMINAL_VOLTAGE / voltage;
-        turret.update(solution.turretAngle, solution.turretRate, dt);
+        if (Double.isNaN(overrideTurretRad)) {
+            turret.update(solution.turretAngle, solution.turretRate, dt);
+        } else {
+            turret.update(overrideTurretRad, 0.0, dt);
+        }
 
         boolean override = !Double.isNaN(overrideRpm);
         double rpm = override ? overrideRpm : solution.flywheelRpm;
@@ -214,6 +219,11 @@ public final class ShootOnTheMove {
     public void setCalibrationOverride(double rpm, double hoodPosition) {
         overrideRpm = rpm;
         overrideHood = hoodPosition;
+    }
+
+    /** Calibration only: hold the turret at a fixed turret-frame angle (rad) instead of tracking the CELL. NaN = track. */
+    public void setTurretOverride(double angleRad) {
+        overrideTurretRad = angleRad;
     }
 
     public void clearCalibrationOverride() {

@@ -17,6 +17,7 @@ import org.firstinspires.ftc.teamcode.aiming.ShotSolution;
 import org.firstinspires.ftc.teamcode.field.Alliance;
 import org.firstinspires.ftc.teamcode.field.BioBuzzField;
 import org.firstinspires.ftc.teamcode.field.HiveCell;
+import org.firstinspires.ftc.teamcode.field.StopLog;
 import org.firstinspires.ftc.teamcode.robot.RobotSys;
 import org.firstinspires.ftc.teamcode.subsystems.IntakeServo;
 
@@ -42,6 +43,7 @@ public final class AutoBlocks {
         this.robot = robot;
         this.alliance = robot.alliance();
         Scheduler.reset();
+        StopLog.clear();
     }
 
     // ------------------------------------------------------------------ the loop
@@ -101,14 +103,28 @@ public final class AutoBlocks {
     }
 
     // ------------------------------------------------------------------ driving
-    /** Follow a path; done when the follower reaches its end. */
-    public Command follow(Path path) {
-        return PedroCommands.follow(robot.follower(), path).requiring(robot.follower());
+    /** Records the pose the robot has right now in the stop list (shown in telemetry, saved to a file). */
+    public Command logStop(String what) {
+        return Commands.instant(() -> StopLog.record(what, robot.pose()));
     }
 
-    /** Follow a path but give up after {@code timeoutMs} (the robot then just stops following). */
+    private int legs;
+
+    /** Follow a path; done when the follower reaches its end. The stop pose is logged. */
+    public Command follow(Path path) {
+        final int n = ++legs;
+        return Groups.sequential(
+                PedroCommands.follow(robot.follower(), path).requiring(robot.follower()),
+                logStop("path " + n + " ended"));
+    }
+
+    /** Follow a path but give up after {@code timeoutMs}. The stop pose is logged either way. */
     public Command follow(Path path, double timeoutMs) {
-        return Groups.race(follow(path), Commands.waitMs(timeoutMs));
+        final int n = ++legs;
+        return Groups.sequential(
+                Groups.race(PedroCommands.follow(robot.follower(), path).requiring(robot.follower()),
+                        Commands.waitMs(timeoutMs)),
+                logStop("path " + n + " stopped"));
     }
 
     /** Drive in a straight line from wherever the robot is when this runs to {@code target}. */
@@ -118,7 +134,7 @@ public final class AutoBlocks {
 
     /** Same as {@link #driveTo} with a timeout. */
     public Command driveTo(Pose target, double timeoutMs) {
-        return Groups.race(driveTo(target), Commands.waitMs(timeoutMs));
+        return Commands.lazy(() -> follow(line(robot.pose(), target), timeoutMs));
     }
 
     /** Hold the position the robot is at when this runs. */

@@ -85,18 +85,20 @@ public class ShootOnTheMoveTeleOp extends LinearOpMode {
 
         while (opModeIsActive()) {
             // Loop time: full period from one loop start to the next.
+            // Loop time: full period from one loop start to the next.
             long loopStart = System.nanoTime();
             if (lastLoopNanos != 0L) {
                 double ms = (loopStart - lastLoopNanos) * 1e-6;
                 loopSumMs += ms;
                 loopWorstMs = Math.max(loopWorstMs, ms);
                 loopCount++;
+
             }
             lastLoopNanos = loopStart;
             robot.setIntakeMode(IntakeServo.Mode.COLLECT_ALL);
 
             // Drive: sticks are in the driver's frame (+forward away from our wall, +left).
-            robot.drive(-gamepad1.left_stick_y, -gamepad1.left_stick_x,
+             robot.drive(-gamepad1.left_stick_y, -gamepad1.left_stick_x,
                     -gamepad1.right_stick_x);
 
             // Each WasPressed() call reports a press once, so read each button only once per loop.
