@@ -5,6 +5,7 @@ import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import static com.pedropathing.ivy.commands.Commands.infinite;
@@ -28,16 +29,22 @@ import static com.pedropathing.ivy.commands.Commands.infinite;
  */
 @Configurable
 public class Turret {
-    private static final double TICKS_PER_REVOLUTION = 103.8 * 4.75;
-    private static final double TICKS_PER_DEGREE = TICKS_PER_REVOLUTION / 360.0;
+    // ---------------- Hardware / encoder config ----------------
+    public static boolean TURRET_SERVO_REVERSED = false;
+    public static String TURRET_ENCODER_NAME = "FR";
+    // Encoder revolutions per ONE full turret revolution.
+    public static double TURRET_ENCODER_REVS_PER_TURRET_REV = 2.923;
+    public static int TURRET_ENCODER_SIGN = 1;
+    // Ticks per encoder revolution (8192 = REV Through Bore / goBILDA 8192 CPR encoder). Change if yours differs.
+    public static double TURRET_ENCODER_TICKS_PER_REV = 8192;
 
     // ---------------- Motion profile constraints ----------------
     // Tune these first, to what the motor/mechanism can actually do.
-    public static double MAX_VELOCITY_DEG_PER_SEC = 2000;
-    public static double MAX_ACCEL_DEG_PER_SEC2 = 7000;
+    public static double MAX_VELOCITY_DEG_PER_SEC = 450;
+    public static double MAX_ACCEL_DEG_PER_SEC2 = 4000;
 
     // ---------------- Move (profile-tracking) gains ----------------
-    public static double kV = 0.0007; // power per deg/s of profile velocity; start near 1/MAX_VELOCITY_DEG_PER_SEC
+    public static double kV = 0.002; // power per deg/s of profile velocity; start near 1/MAX_VELOCITY_DEG_PER_SEC
     public static double kA = 0.0;         // power per deg/s^2; leave at 0 unless you've measured real inertia
     public static double kS = 0.06;        // static-friction feedforward: min power to break stiction
     public static double kP = 0.014;       // corrects error against the profile (not against the final target)
@@ -48,8 +55,8 @@ public class Turret {
     public static double holdKD = 0.0011;
 
     // ---------------- Tolerances ----------------
-    public static double POSITION_TOLERANCE_DEG = 6;
-    public static double REACQUIRE_TOLERANCE_DEG = 6;
+    public static double POSITION_TOLERANCE_DEG = 4;
+    public static double REACQUIRE_TOLERANCE_DEG = 4;
 
     // ---------------- Optional target smoothing ----------------
     // If the incoming target itself is noisy/jittery (e.g. raw vision angle),
@@ -61,6 +68,7 @@ public class Turret {
     public boolean forceOff = false;
 
     private final CRServo turretMotor;
+    private final DcMotorEx encoder;
 
     private double rawTargetDegrees = 0;  // last value passed to setTargetDegrees()
     private double targetDegrees = 0;     // slew-limited target actually chased
@@ -72,7 +80,14 @@ public class Turret {
     private boolean settled = false;
 
     public Turret(HardwareMap hardwareMap) {
-        turretMotor = hardwareMap.get(CRServo.class, "TUR");
+        turretMotor = hardwareMap.get(CRServo.class, "turp");
+        turretMotor.setDirection(TURRET_SERVO_REVERSED
+                ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
+
+        // The motor port is only used to read an external encoder; the motor itself is never powered.
+        encoder = hardwareMap.get(DcMotorEx.class, TURRET_ENCODER_NAME);
+        encoder.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        encoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     public void start() {
@@ -81,7 +96,8 @@ public class Turret {
     }
 
     public double getRawAngleDegrees() {
-        return turretMotor.getCurrentPosition() / TICKS_PER_DEGREE;
+        double ticksPerTurretDeg = TURRET_ENCODER_TICKS_PER_REV * TURRET_ENCODER_REVS_PER_TURRET_REV / 360.0;
+        return TURRET_ENCODER_SIGN * encoder.getCurrentPosition() / ticksPerTurretDeg;
     }
 
     public void off() {

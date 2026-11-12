@@ -13,7 +13,7 @@ public class Gate {
     //TODO 0.295 ,0.37
     Mode mode = Mode.CLOSE;
     public Gate(HardwareMap hardwareMap) {
-        g = hardwareMap.get(Servo.class, "GATE");
+        g = hardwareMap.get(Servo.class, "gatep");
         setpos();
     }
 
@@ -34,8 +34,8 @@ public class Gate {
     }
 
     public enum Mode {
-        OPEN(0.25),
-        CLOSE(0.3);
+        OPEN(0.27),
+        CLOSE(0.4);
         public double position;
 
         Mode(double position) {

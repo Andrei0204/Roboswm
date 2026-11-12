@@ -17,8 +17,8 @@ public class Pivot {
     //TODO lim = 0.1,0.62
 
     public Pivot(HardwareMap hardwareMap) {
-        p = hardwareMap.get(Servo.class, "PIV");
-        p.setPosition(0);
+        p = hardwareMap.get(Servo.class, "hoodp");
+        p.setPosition(0.24);
     }
 
 
@@ -39,7 +39,13 @@ public class Pivot {
         });
     }
     public void set(double set){
-            p.setPosition(set);
+        if(set>0.36)
+            set=0.36;
+        if(set <0.24)
+            set=0.24;
+
+
+        p.setPosition(set);
     }
     public enum Mode {
         POSITION,

@@ -37,86 +37,74 @@ import org.firstinspires.ftc.teamcode.subsystems.Tele;
 public class Launcher {
 
     // ---------------- Feedforward / feedback gains ----------------
-    public static double kV = 0.0202857143; // power per RPS -- start near 1/(free-speed RPS at the flywheel), then tune
+    public static double kV = 0.0202857143 / 60.0; // power per RPM -- start near 1/(free-speed RPS at the flywheel), then tune
     public static double kS = 0.05;       // static friction/loss feedforwardF
-    public static double kP = 0.05;
-    public static double kI = 0.004;
-    public static double kD = 0.0;
+    public static double kP = 0.05 / 60.0;
+    public static double kI = 0.004 / 60.0;
+    public static double kD = 0.0 / 60.0;
 
     // ---------------- Bang-bang / braking thresholds ----------------
-    public static double SPIN_UP_ERROR_RPS = 2; // this far below target -> full power instead of PID
-    public static double BRAKE_ERROR_RPS = 6;   // this far above target -> actively brake instead of coasting
+    public static double SPIN_UP_ERROR_RPM = 120; // this far below target -> full power instead of PID
+    public static double BRAKE_ERROR_RPM = 360;  // this far above target -> actively brake instead of coasting
     public static double BRAKE_POWER = 0.6;     // magnitude of reverse power used while braking -- keep modest
 
-    public static double TOLERANCE_RPS = 2;      // "at speed" band
+    public static double TOLERANCE_RPM = 120;     // "at speed" band
 
-    // Flip this ONE flag if positive power does NOT correspond to a positive GetRPS() reading
+    // Flip this ONE flag if positive power does NOT correspond to a positive getRPM() reading
     // on the bench -- see the note in chat about verifying this before trusting it.
-    public static boolean INVERT_POWER = true;
+    public static boolean INVERT_POWER = false;
 
     private final DcMotorEx LAUNCHER;
-    private final DcMotorEx LAUNCHER2;
-
     public boolean forceOff = false;
-    private double targetRPS = 0;
+    private double targetRPM = 0;
     private Mode mode = Mode.OFF;
-
-    public static double m = 9.5, n = 250;
-    public static double mf = 12, nf = 300;
-
+    
     private double integralSum = 0;
     private double lastError = 0;
     private double lastTime = 0;
 
     public Launcher(HardwareMap hardwareMap) {
-        LAUNCHER = hardwareMap.get(DcMotorEx.class, "LAU");
+        LAUNCHER = hardwareMap.get(DcMotorEx.class, "launcherp");
+        LAUNCHER.setDirection(DcMotorSimple.Direction.REVERSE);
         LAUNCHER.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         LAUNCHER.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        LAUNCHER2 = hardwareMap.get(DcMotorEx.class, "LAU2");
-        LAUNCHER2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        LAUNCHER2.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        LAUNCHER2.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
-    public double GetRPS() {
-        return LAUNCHER.getVelocity() / 28.0 * (20.0 / 30.0);
+    public double getRPM() {
+        return LAUNCHER.getVelocity() / 28.0 * 60.0;
     }
 
     public void off() {
-        targetRPS = 0;
+        targetRPM = 0;
         mode = Mode.OFF;
         integralSum = 0;
     }
 
-    public double getTargetRPS() {
-        return targetRPS;
+    public double getTargetRPM() {
+        return targetRPM;
     }
 
-    /** True once measured RPS is within TOLERANCE_RPS of target. */
+    /** True once measured RPM is within TOLERANCE_RPM of target. */
     public boolean atSpeed() {
-        return mode == Mode.POSITION && Math.abs(targetRPS - GetRPS()) <= TOLERANCE_RPS;
+        return mode == Mode.POSITION && Math.abs(targetRPM - getRPM()) <= TOLERANCE_RPM;
     }
 
-    public void setTargetRPS(double targetRPS) {
-        if (Double.isNaN(targetRPS)) return;
-        if (targetRPS != 0) {
+    public void setTargetRPM(double targetRPM) {
+        if (Double.isNaN(targetRPM)) return;
+        if (targetRPM != 0) {
             mode = Mode.POSITION;
-            this.targetRPS = targetRPS;
+            this.targetRPM = targetRPM;
         } else {
-            this.targetRPS = 0;
+            this.targetRPM = 0;
             mode = Mode.OFF;
         }
     }
 
     public void updateshooting(double x) {
         if (Double.isNaN(x)) return;
-        setTargetRPS(x != 0 ? conversion(x) : 0);
+        setTargetRPM(x);
     }
 
-    public double conversion(double x) {
-        if (Tele.farshooting == 0) return (m * x + n) / 60;
-        return (mf * x + nf) / 60;
-    }
 
     public Mode getMode() {
         return mode;
@@ -134,7 +122,6 @@ public class Launcher {
     private void update() {
         if (forceOff) {
             LAUNCHER.setPower(0);
-            LAUNCHER2.setPower(0);
             return;
         }
 
@@ -145,7 +132,7 @@ public class Launcher {
             case OFF:
             default:
                 LAUNCHER.setPower(0);
-                LAUNCHER2.setPower(0);
+
                 integralSum = 0;
                 break;
         }
@@ -156,15 +143,15 @@ public class Launcher {
         double dt = lastTime == 0 ? 0.02 : clamp(t - lastTime, 1e-3, 0.1);
         lastTime = t;
 
-        double currentRPS = GetRPS();
-        double error = targetRPS - currentRPS;
+        double currentRPM = getRPM();
+        double error = targetRPM - currentRPM;
 
         double power;
-        if (error > SPIN_UP_ERROR_RPS) {
+        if (error > SPIN_UP_ERROR_RPM) {
             // Way below target -- full send, no point waiting on the PID to ramp up.
             power = 1.0;
             integralSum = 0;
-        } else if (error < -BRAKE_ERROR_RPS) {
+        } else if (error < -BRAKE_ERROR_RPM) {
             // Way above target (it just dropped a lot) -- coasting down is too slow, brake actively.
             power = -BRAKE_POWER;
             integralSum = 0;
@@ -173,7 +160,7 @@ public class Launcher {
             integralSum = clamp(integralSum + error * dt, -maxIntegral, maxIntegral);
             double derivative = (error - lastError) / dt;
 
-            double ff = kV * targetRPS + kS;
+            double ff = kV * targetRPM + kS;
             double fb = kP * error + kI * integralSum + kD * derivative;
             power = ff + fb;
         }
@@ -182,7 +169,6 @@ public class Launcher {
         power = clamp(power, -1.0, 1.0);
 
         LAUNCHER.setPower(power);
-        LAUNCHER2.setPower(power);
         lastError = error;
     }
 

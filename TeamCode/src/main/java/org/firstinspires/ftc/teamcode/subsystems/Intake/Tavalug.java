@@ -10,10 +10,10 @@ import com.qualcomm.robotcore.hardware.Servo;
 public class Tavalug {
     private Servo tv1;
     //TODO 0.34,0.28,0.46
-    public static double col =0.36;
-    Mode mode = Mode.COLLECT;
+
+    Mode mode = Mode.INIT;
     public Tavalug(HardwareMap hardwareMap) {
-        tv1 = hardwareMap.get(Servo.class, "TV1");
+        tv1 = hardwareMap.get(Servo.class, "intakes");
         setpos();
     }
     public Mode getMode() {
@@ -41,9 +41,13 @@ public class Tavalug {
     }
 
     public enum Mode {
-        COLLECT(0.339),
-        UP(0.3),
-        DOWN(0.4);
+        INIT(0.7), //0.7 buna
+        /** Collects every ball (POLLEN and NECTAR). */
+        COLLECT_ALL(0.61), // 0.57 valoare buna
+
+        COLLECT_POLLEN(0.75),
+
+        COLLECT_FLOARE(0.61);;
         public double position;
 
         Mode(double position) {
