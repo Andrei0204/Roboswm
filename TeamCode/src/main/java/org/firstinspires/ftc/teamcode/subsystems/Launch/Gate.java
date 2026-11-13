@@ -2,12 +2,13 @@ package org.firstinspires.ftc.teamcode.subsystems.Launch;
 
 import static com.pedropathing.ivy.commands.Commands.instant;
 
-import com.bylazar.configurables.annotations.Configurable;
+import com.acmerobotics.dashboard.config.Config;
+
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
-@Configurable
+@Config
 public class Gate {
     private Servo g;
     //TODO 0.295 ,0.37
@@ -35,7 +36,7 @@ public class Gate {
 
     public enum Mode {
         OPEN(0.27),
-        CLOSE(0.4);
+        CLOSE(0.55);
         public double position;
 
         Mode(double position) {

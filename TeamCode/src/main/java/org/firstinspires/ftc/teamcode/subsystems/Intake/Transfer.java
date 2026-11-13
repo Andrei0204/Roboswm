@@ -1,13 +1,14 @@
 package org.firstinspires.ftc.teamcode.subsystems.Intake;
 
-import com.bylazar.configurables.annotations.Configurable;
+import com.acmerobotics.dashboard.config.Config;
+
 import com.pedropathing.ivy.CommandBuilder;
 import com.pedropathing.ivy.commands.Commands;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
-@Configurable
+@Config
 public class Transfer {
     private DcMotorEx i;
     public static double off = 0;

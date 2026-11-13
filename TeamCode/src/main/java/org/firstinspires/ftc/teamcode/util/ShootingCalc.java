@@ -1,13 +1,14 @@
 package org.firstinspires.ftc.teamcode.util;
 
-import com.bylazar.configurables.annotations.Configurable;
+import com.acmerobotics.dashboard.config.Config;
+
 import com.pedropathing.math.Pose;
 
 
-@Configurable
+@Config
 public class ShootingCalc {
-    public static Pose RED_AUD = new Pose(57, 55);
-    public static Pose RED_REAR = new Pose(57, 90);
+    public static Pose RED_AUD = new Pose(58, 55);
+    public static Pose RED_REAR = new Pose(58, 83);
     public static Pose RED_START = new Pose(6.9, 6.9, 0);
     public static Pose BLUE_AUD = new Pose(87, 55);
     public static Pose BLUE_REAR = new Pose(87, 90);

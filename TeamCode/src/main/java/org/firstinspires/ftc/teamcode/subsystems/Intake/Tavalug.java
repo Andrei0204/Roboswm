@@ -1,12 +1,14 @@
 package org.firstinspires.ftc.teamcode.subsystems.Intake;
 
 import static com.pedropathing.ivy.commands.Commands.*;
-import com.bylazar.configurables.annotations.Configurable;
+
+import com.acmerobotics.dashboard.config.Config;
+
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
-@Configurable
+@Config
 public class Tavalug {
     private Servo tv1;
     //TODO 0.34,0.28,0.46
@@ -43,7 +45,7 @@ public class Tavalug {
     public enum Mode {
         INIT(0.7), //0.7 buna
         /** Collects every ball (POLLEN and NECTAR). */
-        COLLECT_ALL(0.61), // 0.57 valoare buna
+        COLLECT_ALL(0.7), // 0.57 valoare buna
 
         COLLECT_POLLEN(0.75),
 

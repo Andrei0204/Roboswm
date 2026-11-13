@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.Launch;
 
-import com.bylazar.configurables.annotations.Configurable;
+import com.acmerobotics.dashboard.config.Config;
+
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -27,7 +28,7 @@ import static com.pedropathing.ivy.commands.Commands.infinite;
  *    (small corrections around a fixed point) than getting there fast, so
  *    it gets its own gains instead of sharing with the move controller.
  */
-@Configurable
+@Config
 public class Turret {
     // ---------------- Hardware / encoder config ----------------
     public static boolean TURRET_SERVO_REVERSED = false;
@@ -40,30 +41,30 @@ public class Turret {
 
     // ---------------- Motion profile constraints ----------------
     // Tune these first, to what the motor/mechanism can actually do.
-    public static double MAX_VELOCITY_DEG_PER_SEC = 450;
+    public static double MAX_VELOCITY_DEG_PER_SEC = 4500;
     public static double MAX_ACCEL_DEG_PER_SEC2 = 4000;
 
     // ---------------- Move (profile-tracking) gains ----------------
-    public static double kV = 0.002; // power per deg/s of profile velocity; start near 1/MAX_VELOCITY_DEG_PER_SEC
+    public static double kV = 0.000007; // power per deg/s of profile velocity; start near 1/MAX_VELOCITY_DEG_PER_SEC
     public static double kA = 0.0;         // power per deg/s^2; leave at 0 unless you've measured real inertia
-    public static double kS = 0.06;        // static-friction feedforward: min power to break stiction
-    public static double kP = 0.014;       // corrects error against the profile (not against the final target)
-    public static double kD = 0.003;
+    public static double kS = 0.04;        // static-friction feedforward: min power to break stiction
+    public static double kP = 0.006;       // corrects error against the profile (not against the final target)
+    public static double kD = 0.0003;
 
     // ---------------- Hold gains (used once settled at the target) ----------------
-    public static double holdKP = 0.09;
-    public static double holdKD = 0.0011;
+    public static double holdKP = 0.007;
+    public static double holdKD = 0.0002;
 
     // ---------------- Tolerances ----------------
-    public static double POSITION_TOLERANCE_DEG = 4;
-    public static double REACQUIRE_TOLERANCE_DEG = 4;
+    public static double POSITION_TOLERANCE_DEG = 3;
+    public static double REACQUIRE_TOLERANCE_DEG = 3;
 
     // ---------------- Optional target smoothing ----------------
     // If the incoming target itself is noisy/jittery (e.g. raw vision angle),
     // you can slew-limit how fast the target the controller chases is allowed
     // to move. Left huge by default (pass-through) -- the velocity law above
     // already prevents any physical discontinuity on its own.
-    public static double MAX_TARGET_SLEW_DEG_PER_SEC = 100000;
+    public static double MAX_TARGET_SLEW_DEG_PER_SEC = 10000;
 
     public boolean forceOff = false;
 

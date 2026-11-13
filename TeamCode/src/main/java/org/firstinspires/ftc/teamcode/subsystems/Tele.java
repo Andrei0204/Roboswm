@@ -5,9 +5,8 @@ import static com.pedropathing.ivy.commands.Commands.*;
 import static com.pedropathing.ivy.groups.Groups.repeat;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
-import com.bylazar.configurables.annotations.Configurable;
-import com.bylazar.telemetry.PanelsTelemetry;
-import com.bylazar.telemetry.TelemetryManager;
+import com.acmerobotics.dashboard.config.Config;
+
 
 import com.pedropathing.follower.Follower;
 
@@ -27,7 +26,7 @@ import org.firstinspires.ftc.teamcode.util.CommandOpMode;
 import org.firstinspires.ftc.teamcode.util.ShootingCalc;
 import org.firstinspires.ftc.teamcode.util.ShotTable;
 
-@Configurable
+@Config
 public class Tele extends CommandOpMode {
 
     public static double flywheelspeed = 0, anglepivot = 0.24, anglenorm = 0, anglenou = 1;
@@ -39,8 +38,9 @@ public class Tele extends CommandOpMode {
     // Turret pivot offset from the robot center, robot frame (x forward, y left), inches. Tune from your CAD.
     public static double TURRET_OFFSET_X = -3, TURRET_OFFSET_Y = 0;
     RoboModules r;
+    double distance;
     IntakeSystem is;
-    private TelemetryManager telemetryM;
+
     Follower follower;
 
     ElapsedTime timp;
@@ -58,7 +58,7 @@ public class Tele extends CommandOpMode {
         follower = Constants.create(hardwareMap);
         follower.localizer.reset();
         follower.setPose(alliance == Alliance.RED ? ShootingCalc.RED_START : ShootingCalc.BLUE_START);
-        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+
         if (alliance == Alliance.RED)
             Goal = ShootingCalc.RED_AUD;
         else
@@ -89,6 +89,7 @@ public class Tele extends CommandOpMode {
                 r.l.periodic(), r.p.periodic(),
                 activateShooter,
                 updatespeed()
+
         );
     }
 
@@ -99,9 +100,9 @@ public class Tele extends CommandOpMode {
 
 
         follower.update();
-        telemetryM.update();
         Scheduler.execute();
         teleopdrive();
+
         turret();
 
         telemetry();
@@ -112,7 +113,9 @@ public class Tele extends CommandOpMode {
             Scheduler.schedule(launch());
 
         if (gamepad1.rightBumperWasPressed())
-            Scheduler.schedule(toggleIntake());
+            Scheduler.schedule(toggleIntake(true));
+        if (gamepad1.rightBumperWasReleased())
+            Scheduler.schedule(toggleIntake(false));
         if(gamepad1.bWasPressed())
             Goal=ShootingCalc.other(alliance,Goal);
     }
@@ -124,6 +127,9 @@ public class Tele extends CommandOpMode {
         telemetry.addData("errortur", Math.toDegrees(anglenorm) - r.t.getRawAngleDegrees());
         telemetry.addData("Pose",robopose);
         telemetry.addData("TurPose",turpose);
+        telemetry.addData("turangle", r.t.getRawAngleDegrees());
+        telemetry.addData("turlookup", Math.toDegrees(anglenorm) );
+        telemetry.addData("distanta",distance);
         telemetry.update();
     }
 
@@ -131,6 +137,8 @@ public class Tele extends CommandOpMode {
         return sequential(
                 r.g.setcom(Gate.Mode.OPEN),
                 is.run(1),
+                waitMs(40),
+                is.run(2),
                 waitMs(600),
                 r.g.setcom(Gate.Mode.CLOSE),
                 is.run(0)
@@ -138,11 +146,17 @@ public class Tele extends CommandOpMode {
                 .requiring(is)
                 .setPriority(10)
                 .setConflictBehavior(ConflictBehavior.CANCEL);
-    }public Command toggleIntake() {
-        return is.run(is.getIntakeOn() == 0 ? 1 : 0)
+    }
+
+    /** Hold-to-shoot: gate open + intake on while held, gate closed + intake off on release. */
+    public Command toggleIntake(boolean held) {
+        return sequential(
+//                r.g.setcom(held ? Gate.Mode.OPEN : Gate.Mode.CLOSE),
+                is.run(held ? 1 : 0)
+        )
                 .requiring(is)
-                .setPriority(0)
-                .setBlockedBehavior(BlockedBehavior.CANCEL);
+                .setPriority(held ? 10 : 11)
+                .setConflictBehavior(ConflictBehavior.CANCEL);
     }
 
     public Command updatespeed() {
@@ -155,8 +169,8 @@ public class Tele extends CommandOpMode {
     /** Sets flywheel RPM + hood from the distance to the goal when useShotTable is on. */
     public void shootcalc() {
         if (!useShotTable || robopose == null || Goal == null) return;
-        double distance = Math.hypot(Goal.x() - turpose.x(), Goal.y() - turpose.y());
-        ShotTable.Shot shot = ShotTable.get(distance);
+        distance = Math.hypot(Goal.x() - turpose.x(), Goal.y() - turpose.y());
+        ShotTable.Shot shot = ShotTable.get(Math.abs(distance));
         flywheelspeed = shot.rpm;
         anglepivot = shot.hood;
     }
@@ -177,12 +191,14 @@ public class Tele extends CommandOpMode {
     void turret() {
 
         // Aim from the turret's own position, not from the robot center.
-        double dx = turpose.x() - Goal.x();
-        double dy = turpose.y() - Goal.y();
+        double dx = Goal.x() - turpose.x();
+        double dy = Goal.y() - turpose.y();
+        // Field-frame bearing from the turret to the goal.
         double theta = Math.atan2(dy, dx);
 
-        anglenou = Math.PI / 2 - theta;
-        anglenorm = anglenou + robopose.heading() - Math.PI / 2;
+        anglenou = theta;
+        // Turret angle relative to the robot: 0 = robot forward, CCW positive.
+        anglenorm = theta - robopose.heading();
 
         // Wrap to [-180, 180] degrees.
         while (anglenorm > Math.PI) anglenorm -= 2 * Math.PI;
@@ -194,8 +210,8 @@ public class Tele extends CommandOpMode {
 
     public void teleopdrive() {
         follower.manual(-gamepad1.left_stick_y,
-                gamepad1.left_stick_x,
-                Math.abs(gamepad1.right_stick_x)<0.2 ? 0 : gamepad1.right_stick_x
+              -  gamepad1.left_stick_x,
+               Math.abs(gamepad1.right_stick_x)<0.2 ? 0 : -gamepad1.right_stick_x
         );
     }
 

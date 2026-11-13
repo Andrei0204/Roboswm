@@ -2,12 +2,13 @@ package org.firstinspires.ftc.teamcode.subsystems.Launch;
 
 import static com.pedropathing.ivy.commands.Commands.infinite;
 
-import com.bylazar.configurables.annotations.Configurable;
+import com.acmerobotics.dashboard.config.Config;
+
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
-@Configurable
+@Config
 public class Pivot {
     private Servo p;
     public static double target = 0;
