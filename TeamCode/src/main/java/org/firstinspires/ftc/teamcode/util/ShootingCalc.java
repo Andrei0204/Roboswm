@@ -10,9 +10,9 @@ public class ShootingCalc {
     public static Pose RED_AUD = new Pose(58, 55);
     public static Pose RED_REAR = new Pose(58, 83);
     public static Pose RED_START = new Pose(6.9, 6.9, 0);
-    public static Pose BLUE_AUD = new Pose(87, 55);
-    public static Pose BLUE_REAR = new Pose(87, 90);
-    public static Pose BLUE_START = new Pose(137.1, 6.9, Math.PI);
+    public static Pose BLUE_AUD = new Pose(84, 53);
+    public static Pose BLUE_REAR = new Pose(84, 83);
+    public static Pose BLUE_START = new Pose(6.9, 6.9, 0);
 
     private static boolean same(Pose a, Pose b) {
         return Math.abs(a.x() - b.x()) < 1e-6 && Math.abs(a.y() - b.y()) < 1e-6;

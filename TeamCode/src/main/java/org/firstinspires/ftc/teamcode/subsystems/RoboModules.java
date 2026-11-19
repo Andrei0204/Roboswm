@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.subsystems.Intake.BallSensor;
+import org.firstinspires.ftc.teamcode.subsystems.Intake.Flower;
 import org.firstinspires.ftc.teamcode.subsystems.Intake.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Intake.IntakeSystem;
 import org.firstinspires.ftc.teamcode.subsystems.Intake.Tavalug;
@@ -21,6 +23,11 @@ public class RoboModules {
     public Tavalug tav=null;
     public IntakeSystem is=null;
 
+    public Flower f = null;
+    public BallSensor bs = null;
+    public Indicator led = null;
+
+
     public RoboModules(HardwareMap hardwareMap){
         i=new Intake(hardwareMap);
         t=new Turret(hardwareMap);
@@ -31,5 +38,8 @@ public class RoboModules {
         tav=new Tavalug(hardwareMap);
         tr=new Transfer(hardwareMap);
         is=new IntakeSystem(i, tr, tav);
+        f=new Flower(hardwareMap);
+        bs=new BallSensor(hardwareMap);
+        led=new Indicator(hardwareMap);
     }
 }

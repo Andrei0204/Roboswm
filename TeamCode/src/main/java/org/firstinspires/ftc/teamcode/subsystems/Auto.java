@@ -33,9 +33,12 @@ public class Auto extends CommandOpMode {
     public static boolean useShotTable = true;
     // Turret pivot offset from the robot center, robot frame (x forward, y left), inches. Tune from your CAD.
     public static double TURRET_OFFSET_X = -3, TURRET_OFFSET_Y = 0;
+    // Turret hold: when true, auto-aim is ignored and the turret stays at turretHoldAngle.
+    public static boolean turretHold = false, useCurrentAngleForHold = true;
+    public static double turretHoldAngle = 0;
     public RoboModules r;
     double distance;
-    IntakeSystem is;
+    public IntakeSystem is;
 
 
     ElapsedTime timp;
@@ -49,6 +52,7 @@ public class Auto extends CommandOpMode {
             Goal = ShootingCalc.RED_AUD;
         else
             Goal = ShootingCalc.BLUE_AUD;
+        turretHold = false;
     }
 
 
@@ -69,6 +73,9 @@ public class Auto extends CommandOpMode {
         robopose=pose;
         turpose = getTurretPose(pose);
     }
+    public void changegoal(){
+        Goal=ShootingCalc.other(alliance,Goal);
+    }
 
     public Command launch() {
         return sequential(
@@ -76,7 +83,7 @@ public class Auto extends CommandOpMode {
                 is.run(1),
                 waitMs(40),
                 is.run(2),
-                waitMs(600),
+                waitMs(500),
                 r.g.setcom(Gate.Mode.CLOSE),
                 is.run(0)
         )
@@ -90,10 +97,41 @@ public class Auto extends CommandOpMode {
                         r.l.updateshooting(flywheelspeed)
                 );
     }
+    /**
+     * Toggles turret hold. When turned on, goal-tracking is ignored and the turret is held at
+     * turretHoldAngle (degrees, robot frame). If useCurrentAngleForHold is true, the angle the
+     * turret is at when toggled on is captured and held instead. Toggle again to resume tracking.
+     */
+    public Command toggleTurretHold() {
+        return instant(() -> {
+            turretHold = !turretHold;
+            if (turretHold && useCurrentAngleForHold)
+                turretHoldAngle = r.t.getRawAngleDegrees();
+        });
+    }
+
+    /**
+     * Toggles turret hold, setting the hold angle (degrees, robot frame) when it turns on.
+     * Calling it again turns hold off and resumes goal tracking.
+     */
+    public Command toggleTurretHold(double angleDeg) {
+        return instant(() -> {
+            turretHold = !turretHold;
+            if (turretHold) turretHoldAngle = angleDeg;
+        });
+    }
+
     public Command updateTur() {
         return
-                infinite(() ->
-                     instant(()-> turpose = getTurretPose(robopose)).then(instant(()->turret())));
+                infinite(() -> {
+                    if (turretHold) {
+                        r.t.setTargetDegrees(turretHoldAngle);
+                        return;
+                    }
+                    if (robopose == null) return;
+                    turpose = getTurretPose(robopose);
+                    turret();
+                });
     }
 
     public void shootcalc() {
@@ -115,6 +153,10 @@ public class Auto extends CommandOpMode {
     }
 
     void turret() {
+        if (turretHold) {
+            r.t.setTargetDegrees(turretHoldAngle);
+            return;
+        }
         if (robopose == null || turpose == null) return;
         // Aim from the turret's own position, not from the robot center.
         double dx = Goal.x() - turpose.x();

@@ -26,6 +26,10 @@ public class Tavalug {
         this.mode = mode;
         setpos();
     }
+
+
+
+
     public void setpos(){
         tv1.setPosition(mode.position);
     }
@@ -45,11 +49,11 @@ public class Tavalug {
     public enum Mode {
         INIT(0.7), //0.7 buna
         /** Collects every ball (POLLEN and NECTAR). */
-        COLLECT_ALL(0.7), // 0.57 valoare buna
+        COLLECT_ALL(0.52), // 0.57 valoare buna
 
         COLLECT_POLLEN(0.75),
 
-        COLLECT_FLOARE(0.61);;
+        COLLECT_FLOARE(0.54);// era 0.55 dar nu mergea mereu,
         public double position;
 
         Mode(double position) {

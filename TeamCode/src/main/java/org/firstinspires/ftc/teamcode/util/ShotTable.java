@@ -37,19 +37,19 @@ public final class ShotTable {
 
     static {
         // distance (in), rpm, hood servo position
-        add(21.7, 2150, 0.316);
-        add(26.7, 2202, 0.29);
-        add(28.3, 2150, 0.3);
-        add(32.1, 2161, 0.295);
-        add(35.7, 2190, 0.29);
-        add(37.6, 2220, 0.28);
-        add(40.6, 2248, 0.276);
-        add(42.0, 2200, 0.294);
-        add(44.7, 2310, 0.27);
-        add(44.9, 2300, 0.272);
-        add(47.0, 2300, 0.28);
-        add(48.5, 2280, 0.272);
-        add(49.4, 2293, 0.271);
+        add(27.3, 2338, 0.297); //noua
+        add(31.4, 2328, 0.291); //noua
+        add(33.7, 2328, 0.285); //noua
+        add(34.6, 2403, 0.283); //noua
+        add(37.8, 2328, 0.283); //noua
+        add(42.2, 2348, 0.275); //noua
+        add(43.5, 2358, 0.273); //noua
+        add(45.9, 2433, 0.275); //noua
+        add(46.5, 2418, 0.267); //noua
+        add(50.5, 2428, 0.265); //noua
+        add(53.3, 2463, 0.263); //noua
+        add(59.4, 2403, 0.283); //noua
+
     }
 
     /** Adds or replaces a data point. Call from anywhere to tune the table. */

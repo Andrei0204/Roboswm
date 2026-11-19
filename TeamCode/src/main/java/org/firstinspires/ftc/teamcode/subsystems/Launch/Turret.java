@@ -87,6 +87,13 @@ public class Turret {
 
         // The motor port is only used to read an external encoder; the motor itself is never powered.
         encoder = hardwareMap.get(DcMotorEx.class, TURRET_ENCODER_NAME);
+        // Not reset here on purpose: the angle carries over from auto to teleop.
+        // Call resetEncoder() (gamepad1 Y in init) to zero it.
+        encoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    }
+
+    /** Zeroes the turret angle. */
+    public void resetEncoder() {
         encoder.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         encoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }

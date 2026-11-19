@@ -5,6 +5,8 @@ import static com.pedropathing.ivy.commands.Commands.*;
 import static com.pedropathing.ivy.groups.Groups.repeat;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
+import static org.firstinspires.ftc.teamcode.subsystems.Intake.Tavalug.Mode.COLLECT_FLOARE;
+
 import com.acmerobotics.dashboard.config.Config;
 
 
@@ -17,7 +19,9 @@ import com.pedropathing.ivy.behaviors.ConflictBehavior;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.OpModeStorage;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
+import org.firstinspires.ftc.teamcode.subsystems.Intake.Flower;
 import org.firstinspires.ftc.teamcode.subsystems.Intake.IntakeSystem;
 import org.firstinspires.ftc.teamcode.subsystems.Launch.Gate;
 
@@ -37,6 +41,13 @@ public class Tele extends CommandOpMode {
     public static boolean useShotTable = true;
     // Turret pivot offset from the robot center, robot frame (x forward, y left), inches. Tune from your CAD.
     public static double TURRET_OFFSET_X = -3, TURRET_OFFSET_Y = 0;
+    private boolean lastLeftTrigger = false;
+
+    boolean flowerDown = false;
+
+    public static double GOAL_FLASH_MS = 600;
+    long goalFlashUntil = 0;
+    Indicator.Color goalFlashColor = Indicator.Color.BLUE;
     RoboModules r;
     double distance;
     IntakeSystem is;
@@ -63,19 +74,25 @@ public class Tele extends CommandOpMode {
             Goal = ShootingCalc.RED_AUD;
         else
             Goal = ShootingCalc.BLUE_AUD;
+
+        // Created in init (not start) so the turret encoder can be reset during init_loop.
+        r = new RoboModules(hardwareMap);
+        is = r.is;
     }
 
     @Override
     public void init_loop() {
-
+        if (gamepad1.y) r.t.resetEncoder();
+        telemetry.addData("turrey",r.t.getRawAngleDegrees());
+        telemetry.update();
     }
 
 
     @Override
     public void start() {
+        follower.setPose(OpModeStorage.autonomousEndPose);
+        follower.update();
         robopose =follower.pose();
-        r = new RoboModules(hardwareMap);
-        is = r.is;
         r.p.set(0.24);
 
 
@@ -104,6 +121,7 @@ public class Tele extends CommandOpMode {
         teleopdrive();
 
         turret();
+        updateIndicator();
 
         telemetry();
         if (gamepad1.dpadDownWasPressed()) {
@@ -116,8 +134,41 @@ public class Tele extends CommandOpMode {
             Scheduler.schedule(toggleIntake(true));
         if (gamepad1.rightBumperWasReleased())
             Scheduler.schedule(toggleIntake(false));
-        if(gamepad1.bWasPressed())
+        // Failsafe: hold left bumper to reverse only the intake, release to stop.
+
+
+        boolean leftTrigger = gamepad1.left_trigger > 0.5;
+
+        if (leftTrigger && !lastLeftTrigger)
+            Scheduler.schedule(reverseIntake(true));
+
+        if (!leftTrigger && lastLeftTrigger)
+            Scheduler.schedule(reverseIntake(false));
+
+        lastLeftTrigger = leftTrigger;
+
+
+        if(gamepad1.bWasPressed()){
             Goal=ShootingCalc.other(alliance,Goal);
+            flashGoal();
+        }
+        if(gamepad2.bWasPressed()){
+            Goal=ShootingCalc.other(alliance,Goal);
+            flashGoal();
+        }
+
+
+        if (gamepad1.leftBumperWasPressed()) {
+            flowerDown = !flowerDown;
+
+            if (flowerDown) {
+                r.f.setMode(Flower.Mode.DOWN);
+                r.tav.setMode(COLLECT_FLOARE);
+            } else {
+                r.f.setMode(Flower.Mode.UP);
+                r.tav.setMode(COLLECT_FLOARE);
+            }
+        }
     }
 
     void telemetry() {
@@ -130,7 +181,32 @@ public class Tele extends CommandOpMode {
         telemetry.addData("turangle", r.t.getRawAngleDegrees());
         telemetry.addData("turlookup", Math.toDegrees(anglenorm) );
         telemetry.addData("distanta",distance);
+        telemetry.addData("floare",r.f.getMode());
+        telemetry.addData("sensor", r.bs.debug());
         telemetry.update();
+    }
+
+
+
+    /** Call right after the goal changes: flashes BLUE for audience, VIOLET for rear. */
+    void flashGoal() {
+        boolean aud = Goal.x() == ShootingCalc.RED_AUD.x() && Goal.y() == ShootingCalc.RED_AUD.y()
+                || Goal.x() == ShootingCalc.BLUE_AUD.x() && Goal.y() == ShootingCalc.BLUE_AUD.y();
+        goalFlashColor = aud ? Indicator.Color.BLUE : Indicator.Color.VIOLET;
+        goalFlashUntil = System.currentTimeMillis() + (long) GOAL_FLASH_MS;
+    }
+
+    /**
+     * Driver light, highest priority first:
+     *  BLUE / VIOLET = just switched goal (audience / rear), briefly
+     *  GREEN         = 3 pollen loaded (yellow steadily in front of the sensor)
+     *  OFF           = otherwise
+     */
+    void updateIndicator() {
+        r.bs.update();
+        if (System.currentTimeMillis() < goalFlashUntil) r.led.set(goalFlashColor);
+        else if (r.bs.isFull()) r.led.set(Indicator.Color.GREEN);
+        else r.led.set(Indicator.Color.OFF);
     }
 
     public Command launch() {
@@ -156,6 +232,16 @@ public class Tele extends CommandOpMode {
         )
                 .requiring(is)
                 .setPriority(held ? 10 : 11)
+                .setConflictBehavior(ConflictBehavior.CANCEL);
+    }
+
+    /** Failsafe: reverse only the intake while held, stop on release. Overrides shooting/intake commands. */
+    public Command reverseIntake(boolean held) {
+        return sequential(
+                is.run(held ? 4 : 0)
+        )
+                .requiring(is)
+                .setPriority(held ? 12 : 13)
                 .setConflictBehavior(ConflictBehavior.CANCEL);
     }
 
