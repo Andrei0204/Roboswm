@@ -50,7 +50,7 @@ public class Auto3TR extends CommandOpMode {
 
     private final Pose holdintake = poseFactory.of(11.0, 71.0, 180);
     private final Pose point8 = poseFactory.of(44.2799, 6.2242, 111.3878);
-    private final Pose point9 = poseFactory.of(13.9354, 3.8, -177.0489); // era x = 15
+    private final Pose point9 = poseFactory.of(10.9354, 3.8, -177.0489); // era x = 15
     private final Pose ultimaaruncare = poseFactory.of(56.3258, 4.7999, 178.5553);
 
     private final Pose parcare = poseFactory.of(15.5603, 91.7781, -64.8881);
@@ -171,7 +171,7 @@ public class Auto3TR extends CommandOpMode {
                 follow(follower, secondlaunchBack()),
                 auto.r.f.setModeC(Flower.Mode.UP),
                 auto.is.run(0),
-                instant(()->auto.changegoal()),
+                //instant(()->auto.changegoal()),
                 follow(follower, secondlaunch()),
                 auto.r.f.setModeC(Flower.Mode.DOWN),
                 waitMs(500),
@@ -200,7 +200,7 @@ public class Auto3TR extends CommandOpMode {
                         hold(follower, holdintake)
                 ),
                 auto.toggleTurretHold(0),
-                instant(()->auto.changegoal()),
+                //instant(()->auto.changegoal()),
                 follow(follower, path8()),
                 waitMs(500),
                 auto.launch(),

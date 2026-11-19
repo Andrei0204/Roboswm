@@ -7,9 +7,11 @@ import static com.pedropathing.ivy.groups.Groups.sequential;
 
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.Tavalug.Mode.COLLECT_FLOARE;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 
 
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.pedropathing.follower.Follower;
 
 import com.pedropathing.ivy.Command;
@@ -63,7 +65,7 @@ public class Tele extends CommandOpMode {
 
     @Override
     public void init() {
-
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         timp = new ElapsedTime();
         Scheduler.reset();
         follower = Constants.create(hardwareMap);
@@ -90,8 +92,8 @@ public class Tele extends CommandOpMode {
 
     @Override
     public void start() {
-        follower.setPose(OpModeStorage.autonomousEndPose);
-        follower.update();
+//        follower.setPose(OpModeStorage.autonomousEndPose);
+//        follower.update();
         robopose =follower.pose();
         r.p.set(0.24);
 
@@ -149,10 +151,12 @@ public class Tele extends CommandOpMode {
 
 
         if(gamepad1.bWasPressed()){
+            onGoalSwitched();
             Goal=ShootingCalc.other(alliance,Goal);
             flashGoal();
         }
         if(gamepad2.bWasPressed()){
+            onGoalSwitched();
             Goal=ShootingCalc.other(alliance,Goal);
             flashGoal();
         }
@@ -171,16 +175,76 @@ public class Tele extends CommandOpMode {
         }
     }
 
+    // ---- DIAG state ----
+    boolean hasPrevCmd = false, switchPending = false;
+    double prevCmdDeg = 0, lastWrapFrom = 0, lastWrapTo = 0;
+    int wrapCount = 0, switchCount = 0;
+    double switchFromCmd = 0, switchFromDist = 0, switchFromTurret = 0;
+
+    static double wrap180(double d) {
+        while (d > 180) d -= 360;
+        while (d < -180) d += 360;
+        return d;
+    }
+
+    String goalName() {
+        if (Goal == null) return "null";
+        boolean aud = Goal.x() == ShootingCalc.RED_AUD.x() && Goal.y() == ShootingCalc.RED_AUD.y()
+                || Goal.x() == ShootingCalc.BLUE_AUD.x() && Goal.y() == ShootingCalc.BLUE_AUD.y();
+        return aud ? "AUDIENCE" : "REAR";
+    }
+
     void telemetry() {
-        telemetry.addData("flywheelspeed", flywheelspeed);
-        telemetry.addData("lRPM", r.l.getRPM());
-        telemetry.addData("eroor", flywheelspeed - r.l.getRPM());
-        telemetry.addData("errortur", Math.toDegrees(anglenorm) - r.t.getRawAngleDegrees());
-        telemetry.addData("Pose",robopose);
-        telemetry.addData("TurPose",turpose);
-        telemetry.addData("turangle", r.t.getRawAngleDegrees());
-        telemetry.addData("turlookup", Math.toDegrees(anglenorm) );
-        telemetry.addData("distanta",distance);
+        double cmdDeg = Math.toDegrees(anglenorm);
+        double turDeg = r.t.getRawAngleDegrees();
+        double turErr = cmdDeg - turDeg;
+        double bearingDeg = Math.toDegrees(anglenou);
+        double headingDeg = robopose == null ? Double.NaN : Math.toDegrees(robopose.heading());
+        boolean clamped = distance < ShotTable.minDistance() || distance > ShotTable.maxDistance();
+
+        // ===== GOAL =====
+        telemetry.addLine("=== GOAL ===");
+        telemetry.addData("goal", "%s %s  (%.1f, %.1f)", alliance, goalName(),
+                Goal == null ? Double.NaN : Goal.x(), Goal == null ? Double.NaN : Goal.y());
+        telemetry.addData("switches", switchCount);
+
+        // ===== POSE (odometry) =====
+        telemetry.addLine("=== POSE ===");
+        telemetry.addData("robot x,y", "%.1f, %.1f", robopose == null ? Double.NaN : robopose.x(),
+                robopose == null ? Double.NaN : robopose.y());
+        telemetry.addData("heading deg", "%.1f", headingDeg);
+        telemetry.addData("turret pivot x,y", "%.1f, %.1f", turpose == null ? Double.NaN : turpose.x(),
+                turpose == null ? Double.NaN : turpose.y());
+        telemetry.addData("auto end pose", OpModeStorage.autonomousEndPose);
+
+        // ===== TURRET =====
+        telemetry.addLine("=== TURRET ===");
+        telemetry.addData("field bearing to goal deg", "%.1f", bearingDeg);
+        telemetry.addData("cmd = bearing - heading (wrapped)", "%.1f", cmdDeg);
+        telemetry.addData("turret actual deg (encoder)", "%.1f", turDeg);
+        telemetry.addData("turret error deg", "%.1f", turErr);
+        telemetry.addData("turret at target / mode", "%s / %s", r.t.atTarget(), r.t.getMode());
+        telemetry.addData("WRAP>180 jumps", "%d  (last %.0f -> %.0f)", wrapCount, lastWrapFrom, lastWrapTo);
+        telemetry.addData("ENCODER OUT OF +-180?", Math.abs(turDeg) > 180 ? "YES -> will unwind " + Math.round(turErr) + " deg" : "no");
+        if (Math.abs(turErr) > 180) telemetry.addData("!!! TURRET MUST SPIN", "%.0f deg (wrap problem)", turErr);
+        if (switchCount > 0) {
+            telemetry.addData("last switch: cmd before -> now", "%.1f -> %.1f  (jump %.1f)",
+                    switchFromCmd, cmdDeg, wrap180(cmdDeg - switchFromCmd));
+            telemetry.addData("last switch: dist before -> now", "%.1f -> %.1f in", switchFromDist, distance);
+        }
+
+        // ===== SHOT TABLE =====
+        telemetry.addLine("=== SHOT ===");
+        telemetry.addData("useShotTable", useShotTable);
+        telemetry.addData("distance in", "%.1f  (table %.1f..%.1f)", distance, ShotTable.minDistance(), ShotTable.maxDistance());
+        telemetry.addData("TABLE CLAMPED?", clamped ? "YES - outside table, rpm/hood frozen" : "no");
+        telemetry.addData("target rpm", "%.0f", flywheelspeed);
+        telemetry.addData("actual rpm", "%.0f", r.l.getRPM());
+        telemetry.addData("rpm error", "%.0f  atSpeed=%s", flywheelspeed - r.l.getRPM(), r.l.atSpeed());
+        telemetry.addData("hood target / actual", "%.3f / %.3f", anglepivot, r.p.getPos());
+
+        // ===== OTHER =====
+        telemetry.addLine("=== OTHER ===");
         telemetry.addData("floare",r.f.getMode());
         telemetry.addData("sensor", r.bs.debug());
         telemetry.update();
@@ -290,7 +354,25 @@ public class Tele extends CommandOpMode {
         while (anglenorm > Math.PI) anglenorm -= 2 * Math.PI;
         while (anglenorm < -Math.PI) anglenorm += 2 * Math.PI;
 
-        r.t.setTargetDegrees(Math.toDegrees(anglenorm));
+        double cmdDeg = Math.toDegrees(anglenorm);
+        // DIAG: detect the command wrapping across +-180 (turret would then spin ~360 deg the other way).
+        if (hasPrevCmd && Math.abs(cmdDeg - prevCmdDeg) > 180) {
+            wrapCount++;
+            lastWrapFrom = prevCmdDeg;
+            lastWrapTo = cmdDeg;
+        }
+        prevCmdDeg = cmdDeg;
+        hasPrevCmd = true;
+        r.t.setTargetDegrees(cmdDeg);
+    }
+
+    /** DIAG: call right after Goal changes; remembers the turret command before/after the switch. */
+    void onGoalSwitched() {
+        switchCount++;
+        switchFromCmd = prevCmdDeg;
+        switchFromDist = distance;
+        switchFromTurret = r.t.getRawAngleDegrees();
+        switchPending = true; // the "after" values are captured on the next loop in turret()/telemetry
     }
 
 
