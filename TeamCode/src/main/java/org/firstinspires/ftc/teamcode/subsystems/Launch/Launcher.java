@@ -45,9 +45,9 @@ public class Launcher {
     public static double kD = 0.0001 ;
 
     // ---------------- Bang-bang / braking thresholds ----------------
-    public static double SPIN_UP_ERROR_RPM = 100; // this far below target -> full power instead of PID
+    public static double SPIN_UP_ERROR_RPM = 200; // this far below target -> full power instead of PID
     public static double BRAKE_ERROR_RPM = 200;  // this far above target -> actively brake instead of coasting
-    public static double BRAKE_POWER = 0.2;     // magnitude of reverse power used while braking -- keep modest
+    public static double BRAKE_POWER = 0.;     // magnitude of reverse power used while braking -- keep modest
 
     public static double TOLERANCE_RPM = 120;     // "at speed" band
 

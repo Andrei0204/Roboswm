@@ -42,7 +42,7 @@ public class Tele extends CommandOpMode {
     Pose turpose=null;
     public static boolean useShotTable = true;
     // Turret pivot offset from the robot center, robot frame (x forward, y left), inches. Tune from your CAD.
-    public static double TURRET_OFFSET_X = -3, TURRET_OFFSET_Y = 0;
+    public static double TURRET_OFFSET_X = -2.6, TURRET_OFFSET_Y = 0;
     private boolean lastLeftTrigger = false;
 
     boolean flowerDown = false;
@@ -92,8 +92,9 @@ public class Tele extends CommandOpMode {
 
     @Override
     public void start() {
-//        follower.setPose(OpModeStorage.autonomousEndPose);
-//        follower.update();
+        if(OpModeStorage.autonomousEndPose.x()!=0)
+            follower.setPose(OpModeStorage.autonomousEndPose);
+        follower.update();
         robopose =follower.pose();
         r.p.set(0.24);
 
@@ -110,6 +111,7 @@ public class Tele extends CommandOpMode {
                 updatespeed()
 
         );
+        OpModeStorage.autonomousEndPose=new Pose(0,0);
     }
 
     @Override
@@ -276,8 +278,6 @@ public class Tele extends CommandOpMode {
     public Command launch() {
         return sequential(
                 r.g.setcom(Gate.Mode.OPEN),
-                is.run(1),
-                waitMs(40),
                 is.run(2),
                 waitMs(600),
                 r.g.setcom(Gate.Mode.CLOSE),

@@ -45,19 +45,30 @@ public class Turret {
     public static double MAX_ACCEL_DEG_PER_SEC2 = 4000;
 
     // ---------------- Move (profile-tracking) gains ----------------
-    public static double kV = 0.000007; // power per deg/s of profile velocity; start near 1/MAX_VELOCITY_DEG_PER_SEC
+    public static double kV = 0.0000067; // power per deg/s of profile velocity; start near 1/MAX_VELOCITY_DEG_PER_SEC
     public static double kA = 0.0;         // power per deg/s^2; leave at 0 unless you've measured real inertia
-    public static double kS = 0.04;        // static-friction feedforward: min power to break stiction
-    public static double kP = 0.006;       // corrects error against the profile (not against the final target)
-    public static double kD = 0.0003;
+    public static double kS = 0.06;        // static-friction feedforward: min power to break stiction
+    public static double kP = 0.004;       // corrects error against the profile (not against the final target)
+    public static double kD = 0.00035;
 
     // ---------------- Hold gains (used once settled at the target) ----------------
-    public static double holdKP = 0.007;
+    public static double holdKP = 0.004;
     public static double holdKD = 0.0002;
 
+    // ---------------- Cable compensation ----------------
+    // The cable pulls the turret back toward 0 with a force that grows linearly
+    // from 0 at CABLE_START_DEG to full strength at CABLE_END_DEG (spring-like).
+    // We add a position-dependent feedforward that pushes the other way.
+    // CABLE_KF = power needed at CABLE_END_DEG to hold the turret against the cable.
+    // Tune: park the turret at -180, raise CABLE_KF until it stops being dragged back.
+    // If it pushes the wrong way, flip the sign of CABLE_KF.
+    public static double CABLE_START_DEG = -60;
+    public static double CABLE_END_DEG = -180;
+    public static double CABLE_KF = 0.15;
+
     // ---------------- Tolerances ----------------
-    public static double POSITION_TOLERANCE_DEG = 3;
-    public static double REACQUIRE_TOLERANCE_DEG = 3;
+    public static double POSITION_TOLERANCE_DEG = 5;
+    public static double REACQUIRE_TOLERANCE_DEG = 5;
 
     // ---------------- Optional target smoothing ----------------
     // If the incoming target itself is noisy/jittery (e.g. raw vision angle),
@@ -225,10 +236,23 @@ public class Turret {
             power = ff + fb;
         }
 
-        if(clamp(power, -1.0, 1.0)==clamp(power, -1.0, 1.0))
-            turretMotor.setPower(clamp(power, -1.0, 1.0));
+        power += cableCompensation(currentAngle);
+
+        turretMotor.setPower(clamp(power, -1.0, 1.0));
         lastPositionError = positionError;
         lastTime = t;
+    }
+
+    /**
+     * Counter-force for the cable. Zero above CABLE_START_DEG, ramping linearly
+     * to CABLE_KF at CABLE_END_DEG (and held there beyond it). The cable pulls
+     * toward positive angles, so the compensation is negative power.
+     */
+    private static double cableCompensation(double angleDeg) {
+        double span = CABLE_START_DEG - CABLE_END_DEG;
+        if (span == 0) return 0;
+        double frac = clamp((CABLE_START_DEG - angleDeg) / span, 0, 1);
+        return -CABLE_KF * frac;
     }
 
     private static double now() {

@@ -1,0 +1,137 @@
+package org.firstinspires.ftc.teamcode.Autonomii;
+
+import static com.pedropathing.api.Paths.curve;
+import static com.pedropathing.api.Paths.line;
+import static com.pedropathing.ivy.commands.Commands.infinite;
+import static com.pedropathing.ivy.commands.Commands.instant;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
+import static com.pedropathing.ivy.commands.Commands.waitUntil;
+import static com.pedropathing.ivy.groups.Groups.deadline;
+import static com.pedropathing.ivy.groups.Groups.parallel;
+import static com.pedropathing.ivy.groups.Groups.sequential;
+import static com.pedropathing.ivy.pedro.PedroCommands.follow;
+import static com.pedropathing.ivy.pedro.PedroCommands.hold;
+import static org.firstinspires.ftc.teamcode.subsystems.Intake.Tavalug.Mode.COLLECT_FLOARE;
+
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.pedropathing.api.Paths;
+import com.pedropathing.api.PoseFactory;
+import com.pedropathing.follower.Follower;
+import com.pedropathing.ivy.Command;
+import com.pedropathing.ivy.Scheduler;
+import com.pedropathing.math.Pose;
+import com.pedropathing.paths.Path;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+
+import org.firstinspires.ftc.teamcode.OpModeStorage;
+import org.firstinspires.ftc.teamcode.pedro.Constants;
+import org.firstinspires.ftc.teamcode.subsystems.Auto;
+import org.firstinspires.ftc.teamcode.subsystems.Intake.Flower;
+import org.firstinspires.ftc.teamcode.util.Alliance;
+import org.firstinspires.ftc.teamcode.util.CommandOpMode;
+
+@Autonomous
+public class BagPula extends CommandOpMode {
+    Auto auto = null;
+    Follower follower;
+    private final PoseFactory poseFactory = PoseFactory.degrees();
+    // Poses
+    private final Pose startPose = poseFactory.of(56.4, 4.3, 180);
+    private final Pose path1 = poseFactory.of(12.75, 4.75, 180);
+    private final Pose point2 = poseFactory.of(61.75, 125, 200);
+    private final Pose point2Control1 = poseFactory.of(20, 87.75, 0);
+    private final Pose point3 = poseFactory.of(46.75, 123, 90);
+    private final Pose point3Control1 = poseFactory.of(45.75, 80, 0);
+
+    public Path path1() {
+        return Paths.line(startPose, path1).linear(startPose, path1).with(Constants.foresightConfig.maxPathSpeed.at(5.0));
+    }
+
+    public Path path2() {
+        return Paths.curve(path1, point2Control1, point2).linear(path1, point2);
+    }
+
+    public Path path3() {
+        return Paths.curve(point2, point3Control1, point3).constant( point3);
+    }
+
+    @Override
+    public void init() {
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+
+        Scheduler.reset();
+        follower = Constants.create(hardwareMap);
+        follower.localizer.reset();
+        follower.update();
+        follower.setPose(startPose);
+        auto = new Auto(Alliance.RED, hardwareMap);
+        auto.update(follower.pose());
+
+    }
+
+    @Override
+    public void init_loop() {
+        if (gamepad1.y) auto.r.t.resetEncoder();
+        auto.update(follower.pose());
+        Scheduler.execute();
+        follower.update();
+    }
+
+    @Override
+    public void start() {
+        Command activateShooter = infinite(() -> {
+                    auto.r.p.setPos(auto.anglepivot);
+                    auto.shootcalc();
+                }
+        );
+        Scheduler.schedule(
+                auto.r.t.periodic(),
+                auto.r.l.periodic(), auto.r.p.periodic(),
+                activateShooter,
+                auto.updatespeed(),
+                auto.updateTur(),
+                autoroutine()
+        );
+    }
+
+    @Override
+    public void loop() {
+        auto.update(follower.pose());
+        Scheduler.execute();
+        follower.update();
+        auto.telemetry(telemetry);
+        telemetry.addData("T", follower.parametricCompletion());
+        telemetry.update();
+
+
+    }
+
+    @Override
+    public void stop() {
+        OpModeStorage.autonomousEndPose = follower.pose(); //saves your position in that file
+    }
+
+    private Command autoroutine() {
+        return sequential(
+                waitMs(1800),
+                auto.launch(),
+                auto.is.run(1),
+                follow(follower, path1()),
+                waitMs(200),
+                follow(follower, path2()).with(waitUntil(() -> follower.pose().y() > 20).then(auto.is.run(0))),
+                auto.r.f.setModeC(Flower.Mode.DOWN),
+                waitMs(800),
+                auto.launch(),
+                auto.is.run(1),
+                follow(follower,path3()),
+                instant(()->auto.changegoal()),
+                waitMs(1500),
+                auto.launch()
+
+
+                );
+    }
+
+
+}

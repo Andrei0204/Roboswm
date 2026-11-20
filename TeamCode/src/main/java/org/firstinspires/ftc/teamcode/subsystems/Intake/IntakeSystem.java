@@ -29,7 +29,7 @@ public class IntakeSystem {
         this.tavalug = tavalug;
 
         LinkedHashMap<BooleanSupplier, Command> cases = new LinkedHashMap<>();
-        cases.put(() -> intakestate == 0, mode(0, 0, Tavalug.Mode.COLLECT_FLOARE));
+        cases.put(() -> intakestate == 0, mode(0, 0, Tavalug.Mode.UP));
         cases.put(() -> intakestate == 1, mode(1, 1, Tavalug.Mode.COLLECT_FLOARE));
         cases.put(() -> intakestate == 2, mode(1, 0.8, Tavalug.Mode.COLLECT_FLOARE));
         cases.put(() -> intakestate == 3, mode(1, 1, Tavalug.Mode.COLLECT_FLOARE));                    //aicia e cv

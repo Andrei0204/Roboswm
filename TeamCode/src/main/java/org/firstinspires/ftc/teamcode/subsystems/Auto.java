@@ -32,7 +32,7 @@ public class Auto extends CommandOpMode {
     Pose turpose=null;
     public static boolean useShotTable = true;
     // Turret pivot offset from the robot center, robot frame (x forward, y left), inches. Tune from your CAD.
-    public static double TURRET_OFFSET_X = -3, TURRET_OFFSET_Y = 0;
+    public static double TURRET_OFFSET_X = -2.7, TURRET_OFFSET_Y = 0;
     // Turret hold: when true, auto-aim is ignored and the turret stays at turretHoldAngle.
     public static boolean turretHold = false, useCurrentAngleForHold = true;
     public static double turretHoldAngle = 0;
@@ -91,6 +91,24 @@ public class Auto extends CommandOpMode {
                 .setPriority(10)
                 .setConflictBehavior(ConflictBehavior.CANCEL);
     }
+    /**
+     * Sets the flywheel RPM and hood angle by hand and turns the ShotTable lookup OFF,
+     * so shootcalc() stops overwriting them. Use useTableShot() to go back to the table.
+     * Example: auto.setShot(2450, 0.27)
+     */
+    public Command setShot(double rpm, double hoodAngle) {
+        return instant(() -> {
+            useShotTable = false;
+            flywheelspeed = rpm;
+            anglepivot = hoodAngle;
+        });
+    }
+
+    /** Switches back to ShotTable-driven RPM + hood (distance to goal). */
+    public Command useTableShot() {
+        return instant(() -> useShotTable = true);
+    }
+
     public Command updatespeed() {
         return
                 infinite(() ->

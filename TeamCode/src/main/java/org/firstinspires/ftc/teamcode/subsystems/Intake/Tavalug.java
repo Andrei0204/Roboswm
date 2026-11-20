@@ -52,8 +52,9 @@ public class Tavalug {
         COLLECT_ALL(0.52), // 0.57 valoare buna
 
         COLLECT_POLLEN(0.75),
+        UP(0.7),
 
-        COLLECT_FLOARE(0.54);// era 0.55 dar nu mergea mereu,
+        COLLECT_FLOARE(0.52);// era 0.55 dar nu mergea mereu,
         public double position;
 
         Mode(double position) {

@@ -184,11 +184,11 @@ public class ShooterTuneTele extends CommandOpMode {
         if (gamepad1.bWasPressed()) { rear = !rear; applyGoal(); }
         handleAimInput();
 
-        if (gamepad1.leftBumperWasPressed()) {
+//        if (gamepad1.leftBumperWasPressed()) {
             ShotTable.Shot s = ShotTable.get(Math.abs(distance));
             targetRpm = s.rpm;
             hood = clamp(s.hood, HOOD_MIN, HOOD_MAX);
-        }
+//        }
 
         if (gamepad1.backWasPressed()) {
             follower.setPose(alliance == Alliance.RED ? ShootingCalc.RED_START : ShootingCalc.BLUE_START);
@@ -247,8 +247,7 @@ public class ShooterTuneTele extends CommandOpMode {
     private Command launch() {
         return sequential(
                 r.g.setcom(Gate.Mode.OPEN),
-                is.run(1),
-                waitMs(40),
+
                 is.run(2),
                 waitMs(600),
                 r.g.setcom(Gate.Mode.CLOSE),

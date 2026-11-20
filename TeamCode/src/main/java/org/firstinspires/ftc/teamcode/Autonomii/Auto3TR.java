@@ -34,26 +34,26 @@ public class Auto3TR extends CommandOpMode {
     Follower follower;
     private final PoseFactory poseFactory = PoseFactory.degrees();
     // Poses
-    private final Pose startPose = poseFactory.of(56.4, 4.3, 180);
-    private final Pose firstflower = poseFactory.of(17, 43, 180);
+    private final Pose startPose = poseFactory.of(56.4, 6.3, 180);
+    private final Pose firstflower = poseFactory.of(17, 45, 180);
 
-    private final Pose holdf = poseFactory.of(15.5, 43, 180);
+    private final Pose holdf = poseFactory.of(15.5, 45, 180);
 
-    private final Pose path1Control1 = poseFactory.of(30, 43, 180);
-    private final Pose secondLaunchC1 = poseFactory.of(23, 95, 90);
-    private final Pose secondLaunch = poseFactory.of(47, 114, 105);  // 4 y 1 x
+    private final Pose path1Control1 = poseFactory.of(30, 45, 180);
+    private final Pose secondLaunchC1 = poseFactory.of(23, 97, 90);
+    private final Pose secondLaunch = poseFactory.of(46, 116, 105);  // 4 y 1 x
 
-    private final Pose holdf2 = poseFactory.of(47, 124, 90); // x 1 y 1
+    private final Pose holdf2 = poseFactory.of(48, 127, 90); // x 1 y 1
 
-    private final Pose point5 = poseFactory.of(47, 120, 90);  //trebuia sa fie ca holdf2
-    private final Pose salutpath = poseFactory.of(30.7696, 71.1079, 90);
+    private final Pose point5 = poseFactory.of(47, 122, 90);  //trebuia sa fie ca holdf2
+    private final Pose salutpath = poseFactory.of(30.7696, 73.1079, 90);
 
-    private final Pose holdintake = poseFactory.of(11.0, 71.0, 180);
-    private final Pose point8 = poseFactory.of(44.2799, 6.2242, 111.3878);
-    private final Pose point9 = poseFactory.of(10.9354, 3.8, -177.0489); // era x = 15
-    private final Pose ultimaaruncare = poseFactory.of(56.3258, 4.7999, 178.5553);
+    private final Pose holdintake = poseFactory.of(11.0, 73.0, 180);
+    private final Pose point8 = poseFactory.of(44.2799, 8.2242, 111.3878);
+    private final Pose point9 = poseFactory.of(10.9354, 5.8, -177.0489); // era x = 15
+    private final Pose ultimaaruncare = poseFactory.of(56.3258, 6.7999, 178.5553);
 
-    private final Pose parcare = poseFactory.of(15.5603, 91.7781, -64.8881);
+    private final Pose parcare = poseFactory.of(15.5603, 93.7781, -64.8881);
     // Path methods
 
 
@@ -151,10 +151,13 @@ public class Auto3TR extends CommandOpMode {
 
     private Command autoroutine() {
         return sequential(
-                waitMs(1800),
+                auto.setShot(2500, 0.268),
+                waitMs(2400),
                 auto.launch(),
+                auto.setShot(2450, 0.288),
+
                 parallel(
-                        waitUntil(() -> follower.pose().x() < 40).then(
+                        waitUntil(() -> follower.pose().x() < 60).then(
                                 sequential(
                                         auto.r.f.setModeC(Flower.Mode.DOWN),
                                         auto.is.run(2)
@@ -171,11 +174,12 @@ public class Auto3TR extends CommandOpMode {
                 follow(follower, secondlaunchBack()),
                 auto.r.f.setModeC(Flower.Mode.UP),
                 auto.is.run(0),
-                //instant(()->auto.changegoal()),
+                instant(()->auto.changegoal()),
                 follow(follower, secondlaunch()),
                 auto.r.f.setModeC(Flower.Mode.DOWN),
-                waitMs(500),
+                waitMs(1000),
                 auto.launch(),
+                auto.setShot(2500, 0.28),
                 auto.is.run(2),
                 auto.toggleTurretHold(178),
                 auto.toggleTurretHold(190),
@@ -183,7 +187,7 @@ public class Auto3TR extends CommandOpMode {
                         waitMs(2000),
                         hold(follower,holdf2)
                 ),
-                waitMs(500),
+                waitMs(1000),
                 auto.launch(),
                 auto.r.tav.setModeC(COLLECT_FLOARE),
                 parallel(
@@ -200,7 +204,6 @@ public class Auto3TR extends CommandOpMode {
                         hold(follower, holdintake)
                 ),
                 auto.toggleTurretHold(0),
-                //instant(()->auto.changegoal()),
                 follow(follower, path8()),
                 waitMs(500),
                 auto.launch(),
