@@ -41,16 +41,16 @@ public class Auto3TR extends CommandOpMode {
 
     private final Pose path1Control1 = poseFactory.of(30, 45, 180);
     private final Pose secondLaunchC1 = poseFactory.of(23, 97, 90);
-    private final Pose secondLaunch = poseFactory.of(46, 116, 105);  // 4 y 1 x
+    private final Pose secondLaunch = poseFactory.of(48, 116, 105);  // 4 y 1 x
 
-    private final Pose holdf2 = poseFactory.of(48, 127, 90); // x 1 y 1
+    private final Pose holdf2 = poseFactory.of(50, 128.5, 90); // x 1 y 1
 
     private final Pose point5 = poseFactory.of(47, 122, 90);  //trebuia sa fie ca holdf2
     private final Pose salutpath = poseFactory.of(30.7696, 73.1079, 90);
 
     private final Pose holdintake = poseFactory.of(11.0, 73.0, 180);
     private final Pose point8 = poseFactory.of(44.2799, 8.2242, 111.3878);
-    private final Pose point9 = poseFactory.of(10.9354, 5.8, -177.0489); // era x = 15
+    private final Pose point9 = poseFactory.of(15.9354, 5.8, -177.0489); // era x = 15
     private final Pose ultimaaruncare = poseFactory.of(56.3258, 6.7999, 178.5553);
 
     private final Pose parcare = poseFactory.of(15.5603, 93.7781, -64.8881);
@@ -197,14 +197,20 @@ public class Auto3TR extends CommandOpMode {
                                         auto.is.run(2)
                                 )
                         ),
-                        follow(follower, salutpath())
+                        deadline(
+                                waitMs(2000),
+                                follow(follower, salutpath())
+                        )
                 ),
                 deadline(
                         waitMs(1500),
                         hold(follower, holdintake)
                 ),
                 auto.toggleTurretHold(0),
-                follow(follower, path8()),
+                deadline(
+                        waitMs(1000),
+                        follow(follower, path8())
+                ),
                 waitMs(500),
                 auto.launch(),
                 parallel(

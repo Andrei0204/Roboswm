@@ -48,6 +48,7 @@ public class Flower {
         DOWN(0.57); // vedem
 
 
+
         public double position;
 
         Mode(double position) {

@@ -12,8 +12,10 @@ import com.acmerobotics.dashboard.config.Config;
 
 
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.pedropathing.drivetrain.DrivePowers;
 import com.pedropathing.follower.Follower;
 
+import com.pedropathing.follower.ManualDrive;
 import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.ivy.behaviors.BlockedBehavior;
@@ -38,6 +40,21 @@ public class Tele extends CommandOpMode {
     public static double flywheelspeed = 0, anglepivot = 0.24, anglenorm = 0, anglenou = 1;
     Alliance alliance;
     Pose Goal;
+    /** Gamepad2 dpad step (inches) for the aim offset of the selected goal. */
+    public static double AIM_OFFSET_STEP = 0.5;
+    // Field-frame aim offsets, one per goal (index 0 = audience, 1 = rear).
+    double[] aimOffX = new double[2], aimOffY = new double[2];
+
+    boolean isAudienceGoal() {
+        return Goal.x() == ShootingCalc.RED_AUD.x() && Goal.y() == ShootingCalc.RED_AUD.y()
+                || Goal.x() == ShootingCalc.BLUE_AUD.x() && Goal.y() == ShootingCalc.BLUE_AUD.y();
+    }
+
+    /** Selected goal + its dpad offset: the point the turret and shot table actually aim at. */
+    Pose aimGoal() {
+        int i = isAudienceGoal() ? 0 : 1;
+        return new Pose(Goal.x() + aimOffX[i], Goal.y() + aimOffY[i]);
+    }
     Pose robopose= null;
     Pose turpose=null;
     public static boolean useShotTable = true;
@@ -47,7 +64,11 @@ public class Tele extends CommandOpMode {
 
     boolean flowerDown = false;
 
+    /** Fixed shot used while gamepad2.a manual mode is on. */
+    public static double MANUAL_RPM = 2550, MANUAL_HOOD = 0.268;
+
     public static double GOAL_FLASH_MS = 600;
+    public static double LAUNCH_GAP_MS = 1;
     long goalFlashUntil = 0;
     Indicator.Color goalFlashColor = Indicator.Color.BLUE;
     RoboModules r;
@@ -128,7 +149,19 @@ public class Tele extends CommandOpMode {
         updateIndicator();
 
         telemetry();
+        if (Goal != null) {
+            int gi = isAudienceGoal() ? 0 : 1;
+            // Driver perspective: up = away from the driver (toward the goals), right = driver's right.
+            // Red driver looks along +x (right = -y); blue driver looks along -x (right = +y).
+            double s = alliance == Alliance.RED ? 1 : -1;
+            if (gamepad2.dpadUpWasPressed()) aimOffX[gi] += s * AIM_OFFSET_STEP;
+            if (gamepad2.dpadDownWasPressed()) aimOffX[gi] -= s * AIM_OFFSET_STEP;
+            if (gamepad2.dpadRightWasPressed()) aimOffY[gi] -= s * AIM_OFFSET_STEP;
+            if (gamepad2.dpadLeftWasPressed()) aimOffY[gi] += s * AIM_OFFSET_STEP;
+        }
         if (gamepad1.dpadDownWasPressed()) {
+            java.util.Arrays.fill(aimOffX, 0);
+            java.util.Arrays.fill(aimOffY, 0);
             follower.setPose(alliance == Alliance.RED ? ShootingCalc.RED_START : ShootingCalc.BLUE_START);
         }
         if (gamepad1.right_trigger > 0.2)
@@ -156,6 +189,17 @@ public class Tele extends CommandOpMode {
             onGoalSwitched();
             Goal=ShootingCalc.other(alliance,Goal);
             flashGoal();
+        }
+        if (gamepad2.aWasPressed()) {
+            // Toggle: ShotTable lookup <-> fixed manual shot (same as auto.setShot(2500, 0.268)).
+            if (useShotTable) {
+                Scheduler.schedule(setManualShot(MANUAL_RPM, MANUAL_HOOD));
+                gamepad1.rumble(1000);
+                gamepad2.rumble(1000);
+            } else {
+                useShotTable = true;
+                r.led.set(goalFlashColor);
+            }
         }
         if(gamepad2.bWasPressed()){
             onGoalSwitched();
@@ -208,6 +252,8 @@ public class Tele extends CommandOpMode {
         telemetry.addLine("=== GOAL ===");
         telemetry.addData("goal", "%s %s  (%.1f, %.1f)", alliance, goalName(),
                 Goal == null ? Double.NaN : Goal.x(), Goal == null ? Double.NaN : Goal.y());
+        telemetry.addData("aim offset aud x,y", "%.1f, %.1f", aimOffX[0], aimOffY[0]);
+        telemetry.addData("aim offset rear x,y", "%.1f, %.1f", aimOffX[1], aimOffY[1]);
         telemetry.addData("switches", switchCount);
 
         // ===== POSE (odometry) =====
@@ -259,7 +305,17 @@ public class Tele extends CommandOpMode {
         boolean aud = Goal.x() == ShootingCalc.RED_AUD.x() && Goal.y() == ShootingCalc.RED_AUD.y()
                 || Goal.x() == ShootingCalc.BLUE_AUD.x() && Goal.y() == ShootingCalc.BLUE_AUD.y();
         goalFlashColor = aud ? Indicator.Color.BLUE : Indicator.Color.VIOLET;
-        goalFlashUntil = System.currentTimeMillis() + (long) GOAL_FLASH_MS;
+        r.led.set(goalFlashColor);
+//        r.led.set(useShotTable ? goalFlashColor : Indicator.Color.ORANGE);
+
+    }
+
+    Command setManualShot(double rpm, double hood) {
+        return instant(() -> {
+            useShotTable = false;
+            flywheelspeed = rpm;
+            anglepivot = hood;
+        });
     }
 
     /**
@@ -270,16 +326,13 @@ public class Tele extends CommandOpMode {
      */
     void updateIndicator() {
         r.bs.update();
-        if (System.currentTimeMillis() < goalFlashUntil) r.led.set(goalFlashColor);
-        else if (r.bs.isFull()) r.led.set(Indicator.Color.GREEN);
-        else r.led.set(Indicator.Color.OFF);
     }
 
     public Command launch() {
         return sequential(
                 r.g.setcom(Gate.Mode.OPEN),
-                is.run(2),
-                waitMs(600),
+                is.run(1),
+                waitMs(400),
                 r.g.setcom(Gate.Mode.CLOSE),
                 is.run(0)
         )
@@ -319,7 +372,8 @@ public class Tele extends CommandOpMode {
     /** Sets flywheel RPM + hood from the distance to the goal when useShotTable is on. */
     public void shootcalc() {
         if (!useShotTable || robopose == null || Goal == null) return;
-        distance = Math.hypot(Goal.x() - turpose.x(), Goal.y() - turpose.y());
+        Pose aim = aimGoal();
+        distance = Math.hypot(aim.x() - turpose.x(), aim.y() - turpose.y());
         ShotTable.Shot shot = ShotTable.get(Math.abs(distance));
         flywheelspeed = shot.rpm;
         anglepivot = shot.hood;
@@ -341,8 +395,9 @@ public class Tele extends CommandOpMode {
     void turret() {
 
         // Aim from the turret's own position, not from the robot center.
-        double dx = Goal.x() - turpose.x();
-        double dy = Goal.y() - turpose.y();
+        Pose aim = aimGoal();
+        double dx = aim.x() - turpose.x();
+        double dy = aim.y() - turpose.y();
         // Field-frame bearing from the turret to the goal.
         double theta = Math.atan2(dy, dx);
 

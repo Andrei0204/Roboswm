@@ -40,12 +40,12 @@ public class Launcher {
     // ---------------- Feedforward / feedback gains ----------------
     public static double kV = 0.000155 ; // power per RPM -- start near 1/(free-speed RPS at the flywheel), then tune
     public static double kS = 0.0;       // static friction/loss feedforwardF
-    public static double kP = 0.003 ;
+    public static double kP = 0.005 ;
     public static double kI = 0.00;
     public static double kD = 0.0001 ;
 
     // ---------------- Bang-bang / braking thresholds ----------------
-    public static double SPIN_UP_ERROR_RPM = 200; // this far below target -> full power instead of PID
+    public static double SPIN_UP_ERROR_RPM = 250; // this far below target -> full power instead of PID
     public static double BRAKE_ERROR_RPM = 200;  // this far above target -> actively brake instead of coasting
     public static double BRAKE_POWER = 0.;     // magnitude of reverse power used while braking -- keep modest
 
