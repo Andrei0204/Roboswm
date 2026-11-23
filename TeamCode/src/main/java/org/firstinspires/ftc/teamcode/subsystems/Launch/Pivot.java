@@ -33,17 +33,19 @@ public class Pivot {
         return pos;
     }
     public Command periodic() {
-        return infinite(() -> {
-            target = pos;
-            set(target);
+        return infinite(this::tester);
+    }
 
-        });
+    /** Direct (non-scheduler) update. */
+    public void tester() {
+        target = pos;
+        set(target);
     }
     public void set(double set){
-        if(set>0.36)
-            set=0.36;
-        if(set <0.24)
-            set=0.24;
+        if(set>0.62)
+            set=0.62;
+        if(set <0.43)
+            set=0.43 ;
 
 
         p.setPosition(set);

@@ -3,186 +3,163 @@ package org.firstinspires.ftc.teamcode.subsystems.Launch;
 import static com.pedropathing.ivy.commands.Commands.infinite;
 
 import com.acmerobotics.dashboard.config.Config;
-
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-
-import org.firstinspires.ftc.teamcode.subsystems.Tele;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 /**
- * Flywheel launcher velocity control.
+ * Flywheel speed control: feedforward + PID, voltage compensated.
  *
- * Goals: fast response to a changing RPS target (spin-up AND spin-down), and
- * tight steady-state tracking (~5 RPS band on a ~6000 RPM-class motor).
- *
- * How it gets there:
- *  - Feedforward (kV * target + kS) supplies most of the power for a given
- *    target RPS on its own, worked out from the motor's free speed. Because
- *    it doesn't depend on measured error, it reacts to a target CHANGE
- *    instantly instead of needing error to build up first, the way a bare
- *    PID does.
- *  - A PID trim on top only has to correct real-world inaccuracy (voltage
- *    sag, friction, the RPS dip when a ball is fired) -- small corrections,
- *    so it can be tuned tight without going unstable, which is what
- *    actually gets you inside a 5 RPS band.
- *  - If the error is large -- a big target jump, or a ball was just fired
- *    and RPS dropped a lot -- it skips the PID and drives full power in the
- *    needed direction, including a brief reverse "brake" when the target
- *    drops a lot, since an un-driven flywheel coasts down far slower than
- *    it spins up.
+ *  - Feedforward (kV * target + kS) gives roughly the right power for a target on its own,
+ *    so the PID only fixes small errors and can be tuned tight.
+ *  - Everything is scaled by NOMINAL_VOLTAGE / battery voltage, so the same power gives the
+ *    same speed on a full or a tired battery.
+ *  - The integral only builds up near the target (I_ZONE_RPM), so it can't wind up during
+ *    spin-up and overshoot, and it is kept (not wiped) through small overshoots.
  */
 @Config
 public class Launcher {
+    // Feedforward. kV = power per RPM at NOMINAL_VOLTAGE. Tune kV FIRST with kP = kI = 0 (see tuning notes).
+    public static double kV = 0.00016;
+    public static double kS = 0.0;
 
-    // ---------------- Feedforward / feedback gains ----------------
-    public static double kV = 0.000155 ; // power per RPM -- start near 1/(free-speed RPS at the flywheel), then tune
-    public static double kS = 0.0;       // static friction/loss feedforwardF
-    public static double kP = 0.005 ;
-    public static double kI = 0.00;
-    public static double kD = 0.0001 ;
+    // Feedback on top of the feedforward.
+    public static double kP = 0.001;
+    public static double kI = 0.003;
+    public static double kD = 0;
 
-    // ---------------- Bang-bang / braking thresholds ----------------
-    public static double SPIN_UP_ERROR_RPM = 250; // this far below target -> full power instead of PID
-    public static double BRAKE_ERROR_RPM = 200;  // this far above target -> actively brake instead of coasting
-    public static double BRAKE_POWER = 0.;     // magnitude of reverse power used while braking -- keep modest
+    // Integral only accumulates within this many RPM of the target.
+    public static double I_ZONE_RPM = 200;
+    // Most power the integral term may add or remove.
+    public static double I_MAX_POWER = 0.3;
 
-    public static double TOLERANCE_RPM = 120;     // "at speed" band
+    public static double NOMINAL_VOLTAGE = 12.5;
 
-    // Flip this ONE flag if positive power does NOT correspond to a positive getRPM() reading
-    // on the bench -- see the note in chat about verifying this before trusting it.
-    public static boolean INVERT_POWER = false;
+    public static double TOLERANCE_RPM = 120;
 
-    private final DcMotorEx LAUNCHER;
-    public boolean forceOff = false;
-    private double targetRPM = 0;
-    private Mode mode = Mode.OFF;
-    
-    private double integralSum = 0;
+    // More than BRAKE_OVER_RPM above target -> BRAKE_POWER. Closer than that the PID handles it
+    // (it can lower power to 0, but never reverses).
+    public static double BRAKE_OVER_RPM = 150;
+    public static double BRAKE_POWER = -0.2;
+
+    // Bang-bang: more than BANG_BANG_RPM below target -> full power (fast spin-up and
+    // recovery after a shot). Closer than that, feedforward + PID take over.
+    // Keep it at or below I_ZONE_RPM so the integral is already working at the hand-off.
+    public static boolean BANG_BANG = true;
+    public static double BANG_BANG_RPM = 125;
+    public static double BANG_BANG_POWER = 1.0;
+
+    private final DcMotorEx motor;
+    private final VoltageSensor battery;
+
+    private double target = 0;
+    private double integral = 0;
     private double lastError = 0;
-    private double lastTime = 0;
+    private long lastTime = 0;
+
+    private double voltage = 12;
+    private long lastVoltageRead = 0;
 
     public Launcher(HardwareMap hardwareMap) {
-        LAUNCHER = hardwareMap.get(DcMotorEx.class, "launcherp");
-        LAUNCHER.setDirection(DcMotorSimple.Direction.REVERSE);
-        LAUNCHER.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        LAUNCHER.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        motor = hardwareMap.get(DcMotorEx.class, "launcherp");
+        motor.setDirection(DcMotorSimple.Direction.REVERSE);
+        motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        battery = hardwareMap.voltageSensor.iterator().hasNext()
+                ? hardwareMap.voltageSensor.iterator().next() : null;
     }
 
     public double getRPM() {
-        return LAUNCHER.getVelocity() / 28.0 * 60.0;
+        return motor.getVelocity() / 28.0 * 60.0;
+    }
+
+    public void setTargetRPM(double rpm) {
+        if (Double.isNaN(rpm)) return;
+        target = rpm;
+    }
+
+    public void updateshooting(double rpm) {
+        setTargetRPM(rpm);
     }
 
     public void off() {
-        targetRPM = 0;
-        mode = Mode.OFF;
-        integralSum = 0;
+        setTargetRPM(0);
     }
 
     public double getTargetRPM() {
-        return targetRPM;
+        return target;
     }
 
-    /** True once measured RPM is within TOLERANCE_RPM of target. */
     public boolean atSpeed() {
-        return mode == Mode.POSITION && Math.abs(targetRPM - getRPM()) <= TOLERANCE_RPM;
-    }
-
-    public void setTargetRPM(double targetRPM) {
-        if (Double.isNaN(targetRPM)) return;
-        if (targetRPM != 0) {
-            mode = Mode.POSITION;
-            this.targetRPM = targetRPM;
-        } else {
-            this.targetRPM = 0;
-            mode = Mode.OFF;
-        }
-    }
-
-    public void updateshooting(double x) {
-        if (Double.isNaN(x)) return;
-        setTargetRPM(x);
-    }
-
-
-    public Mode getMode() {
-        return mode;
+        return target != 0 && Math.abs(target - getRPM()) <= TOLERANCE_RPM;
     }
 
     public Command periodic() {
         return infinite(this::update);
     }
 
-    /** Also callable directly (e.g. from a teleop loop or a test OpMode) without the command scheduler. */
     public void tester() {
         update();
     }
 
     private void update() {
-        if (forceOff) {
-            LAUNCHER.setPower(0);
+        if (target == 0) {
+            // Let it coast instead of driving the flywheel backwards.
+            motor.setPower(0);
+            integral = 0;
+            lastError = 0;
+            lastTime = 0;
             return;
         }
 
-        switch (mode) {
-            case POSITION:
-                runVelocityControl();
-                break;
-            case OFF:
-            default:
-                LAUNCHER.setPower(0);
+        long now = System.nanoTime();
+        double dt = lastTime == 0 ? 0.02 : Math.min((now - lastTime) / 1e9, 0.1);
+        lastTime = now;
 
-                integralSum = 0;
-                break;
-        }
-    }
-
-    private void runVelocityControl() {
-        double t = now();
-        double dt = lastTime == 0 ? 0.02 : clamp(t - lastTime, 1e-3, 0.1);
-        lastTime = t;
-
-        double currentRPM = getRPM();
-        double error = targetRPM - currentRPM;
+        double error = target - getRPM();
+        double derivative = (error - lastError) / dt;
+        lastError = error;
 
         double power;
-        if (error > SPIN_UP_ERROR_RPM) {
-            // Way below target -- full send, no point waiting on the PID to ramp up.
-            power = 1.0;
-            integralSum = 0;
-        } else if (error < -BRAKE_ERROR_RPM) {
-            // Way above target (it just dropped a lot) -- coasting down is too slow, brake actively.
-            power = -BRAKE_POWER;
-            integralSum = 0;
+        if (error < -BRAKE_OVER_RPM) {
+            // Way too fast (e.g. target just dropped a lot): brake.
+            power = BRAKE_POWER;
+            integral = 0;
+        } else if (BANG_BANG && error > BANG_BANG_RPM) {
+            // Way too slow (spin-up, or RPM dropped after a shot): full send.
+            power = BANG_BANG_POWER;
         } else {
-            double maxIntegral = kI > 1e-9 ? 0.3 / kI : 0;
-            integralSum = clamp(integralSum + error * dt, -maxIntegral, maxIntegral);
-            double derivative = (error - lastError) / dt;
+            if (Math.abs(error) < I_ZONE_RPM && kI > 0) {
+                double maxIntegral = I_MAX_POWER / kI;
+                integral = clamp(integral + error * dt, -maxIntegral, maxIntegral);
+            }
 
-            double ff = kV * targetRPM + kS;
-            double fb = kP * error + kI * integralSum + kD * derivative;
-            power = ff + fb;
+            double ff = kV * target + kS;
+            double fb = kP * error + kI * integral + kD * derivative;
+            power = (ff + fb) * NOMINAL_VOLTAGE / readVoltage();
+            power = Math.max(0, power); // never reverse while near the target
         }
-
-        if (INVERT_POWER) power = -power;
-        power = clamp(power, -1.0, 1.0);
-
-        LAUNCHER.setPower(power);
-        lastError = error;
+        motor.setPower(clamp(power, -1, 1));
     }
 
-    private static double now() {
-        return System.nanoTime() / 1e9;
+    /** Battery voltage, re-read at most every 250 ms (each read costs loop time). */
+    private double readVoltage() {
+        if (battery == null) return NOMINAL_VOLTAGE;
+        long now = System.nanoTime();
+        if (now - lastVoltageRead > 250_000_000L) {
+            double v = battery.getVoltage();
+            if (v > 6) voltage = v; // ignore bogus readings
+            lastVoltageRead = now;
+        }
+        return voltage;
     }
 
     private static double clamp(double v, double lo, double hi) {
         return Math.max(lo, Math.min(hi, v));
-    }
-
-    public enum Mode {
-        POSITION,
-        OFF,
     }
 }

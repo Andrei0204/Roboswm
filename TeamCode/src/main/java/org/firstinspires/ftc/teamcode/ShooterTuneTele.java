@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
-import static com.pedropathing.ivy.commands.Commands.infinite;
+import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
@@ -58,11 +58,11 @@ import org.firstinspires.ftc.teamcode.util.ShotTable;
 public class ShooterTuneTele extends CommandOpMode {
 
     // Same limits Pivot.set() enforces.
-    private static final double HOOD_MIN = 0.24, HOOD_MAX = 0.36;
+    private static final double HOOD_MIN = 0.43, HOOD_MAX = 0.62          ;
     private static final double RPM_MAX = 6000;
 
     private static final double RPM_FINE = 10, RPM_COARSE = 50;
-    private static final double HOOD_FINE = 0.002, HOOD_COARSE = 0.01;
+    private static final double HOOD_FINE = 0.005, HOOD_COARSE = 0.001;
 
     private Alliance alliance = Alliance.BLUE;
     private Pose goal;
@@ -73,8 +73,8 @@ public class ShooterTuneTele extends CommandOpMode {
     private Follower follower;
     private VoltageSensor battery;
 
-    private double targetRpm = 2200;
-    private double hood = 0.30;
+    private double targetRpm = 2400;
+    private double hood = 0.55;
     private boolean fine = true;
     private boolean flywheelOn = false;
     private boolean autoAim = true;
@@ -132,15 +132,6 @@ public class ShooterTuneTele extends CommandOpMode {
     @Override
     public void start() {
         r.p.set(hood);
-        Scheduler.schedule(
-                r.t.periodic(),
-                r.l.periodic(),
-                r.p.periodic(),
-                infinite(() -> {
-                    r.p.setPos(hood);
-                    r.l.updateshooting(flywheelOn ? targetRpm : 0);
-                })
-        );
         loopTimer.reset();
     }
 
@@ -150,12 +141,27 @@ public class ShooterTuneTele extends CommandOpMode {
         turretPose = getTurretPose(robotPose);
 
         follower.update();
-        Scheduler.execute();
+        Scheduler.execute(); // only runs launch() now
+
         drive();
         handleInput();
-        aimTurret();
+        update();
         trackShot();
         showTelemetry();
+    }
+
+    /** All per-loop subsystem updates, run directly (no scheduler/commands), same as Tele.update(). */
+    private void update() {
+        r.p.setPos(hood);
+        r.l.updateshooting(flywheelOn ? targetRpm : 0);
+        aimTurret();
+        r.t.tester();
+        r.l.tester();
+        r.p.tester();
+        r.bs.update();
+
+        // Feeding a shot wins over the bumper; set directly so nothing can block it.
+        is.set(feeding ? 2 : gamepad1.right_bumper ? 1 : 0);
     }
 
     @Override
@@ -184,18 +190,15 @@ public class ShooterTuneTele extends CommandOpMode {
         if (gamepad1.bWasPressed()) { rear = !rear; applyGoal(); }
         handleAimInput();
 
-//        if (gamepad1.leftBumperWasPressed()) {
+        if (gamepad1.leftBumperWasPressed()) {
             ShotTable.Shot s = ShotTable.get(Math.abs(distance));
             targetRpm = s.rpm;
             hood = clamp(s.hood, HOOD_MIN, HOOD_MAX);
-//        }
+        }
 
         if (gamepad1.backWasPressed()) {
             follower.setPose(alliance == Alliance.RED ? ShootingCalc.RED_START : ShootingCalc.BLUE_START);
         }
-
-        if (gamepad1.rightBumperWasPressed()) Scheduler.schedule(toggleIntake(true));
-        if (gamepad1.rightBumperWasReleased()) Scheduler.schedule(toggleIntake(false));
 
         if (gamepad1.right_trigger > 0.2) {
             if (!shotTaken || sinceShot.seconds() > 1.0) recordShot();
@@ -244,24 +247,23 @@ public class ShooterTuneTele extends CommandOpMode {
 
     // ------------------------------------------------------------------ commands
 
+    /** True while a shot is feeding; update() runs the intake in feed mode while set. */
+    private boolean feeding = false;
+
+    /** One press: gate open + continuous feed for Tele.LAUNCH_MS, then close. Same as Tele.launch(). */
     private Command launch() {
         return sequential(
                 r.g.setcom(Gate.Mode.OPEN),
-
-                is.run(2),
-                waitMs(600),
+                waitMs(70),
+                instant(() -> feeding = true),
+                waitMs(10),
+                is.setIn(1),
+                waitMs(org.firstinspires.ftc.teamcode.subsystems.Tele.LAUNCH_MS),
                 r.g.setcom(Gate.Mode.CLOSE),
-                is.run(0)
+                instant(() -> feeding = false)
         )
-                .requiring(is)
+                .requiring(r.g)
                 .setPriority(10)
-                .setConflictBehavior(ConflictBehavior.CANCEL);
-    }
-
-    private Command toggleIntake(boolean held) {
-        return sequential(is.run(held ? 1 : 0))
-                .requiring(is)
-                .setPriority(held ? 10 : 11)
                 .setConflictBehavior(ConflictBehavior.CANCEL);
     }
 
@@ -335,6 +337,8 @@ public class ShooterTuneTele extends CommandOpMode {
         telemetry.addLine("---- SHOOTER ----");
         telemetry.addData("RPM", "%.0f / %.0f  (err %+.0f)  %s", rpm, targetRpm, rpm - r.l.getTargetRPM(),
                 r.l.atSpeed() ? "AT SPEED" : "spinning");
+        telemetry.addData("target",  r.l.getTargetRPM());
+        telemetry.addData("Real rpm",  r.l.getRPM());
         telemetry.addData("Flywheel", flywheelOn ? "ON" : "OFF");
         telemetry.addData("Hood", "%.3f  (%.2f-%.2f)", hood, HOOD_MIN, HOOD_MAX);
         telemetry.addData("Step", "%s  (%.0f rpm / %.3f hood)", fine ? "FINE" : "COARSE",

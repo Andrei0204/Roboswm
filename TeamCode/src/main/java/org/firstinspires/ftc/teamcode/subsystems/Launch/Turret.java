@@ -1,271 +1,177 @@
 package org.firstinspires.ftc.teamcode.subsystems.Launch;
 
-import com.acmerobotics.dashboard.config.Config;
+import static com.pedropathing.ivy.commands.Commands.infinite;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
-import static com.pedropathing.ivy.commands.Commands.infinite;
-
 /**
- * Turret position control built on a trapezoidal motion profile that is
- * tracked with a feedforward + PD loop, plus a separate "hold" controller
- * once the turret is within tolerance of its target.
+ * Turret angle control for a continuous-rotation servo + external encoder.
  *
- * Why not plain PID?
- *  - A step-input PID either overshoots (if it's fast/aggressive enough to
- *    be useful) or is slow (if damped enough to avoid overshoot).
- *  - A motion profile ramps velocity up, cruises, then ramps back down to
- *    exactly zero at the target. The controller is always chasing a moving
- *    setpoint that is already decelerating into the target, which is what
- *    removes overshoot while still letting you run near max speed for most
- *    of the move.
- *  - Once you're basically there, position holding is a different problem
- *    (small corrections around a fixed point) than getting there fast, so
- *    it gets its own gains instead of sharing with the move controller.
+ * power = kS * sign(error)            static / deadband compensation
+ *       + kV * targetVelocity         feedforward, so it keeps up with a moving target (robot turning)
+ *       + kP * error
+ *       + kI * integral               only within I_ZONE_DEG, reset when error changes sign
+ *       + kD * (targetVel - turretVel) damping from the encoder's own velocity (no derivative kick)
+ *
+ * Inside DEADBAND_DEG the output is 0, so it parks instead of buzzing around the target.
+ *
+ * Why kS matters: a CR servo does nothing below roughly 0.03-0.06 power. Without kS, small
+ * errors ask for less than that and the turret stops short of the target.
  */
 @Config
 public class Turret {
-    // ---------------- Hardware / encoder config ----------------
-    public static boolean TURRET_SERVO_REVERSED = false;
-    public static String TURRET_ENCODER_NAME = "FR";
-    // Encoder revolutions per ONE full turret revolution.
-    public static double TURRET_ENCODER_REVS_PER_TURRET_REV = 2.923;
-    public static int TURRET_ENCODER_SIGN = 1;
-    // Ticks per encoder revolution (8192 = REV Through Bore / goBILDA 8192 CPR encoder). Change if yours differs.
-    public static double TURRET_ENCODER_TICKS_PER_REV = 8192;
+    public static double kP = 0.002 ;
+    public static double kI = 0.003;
+    public static double kD = 0.0003;
 
-    // ---------------- Motion profile constraints ----------------
-    // Tune these first, to what the motor/mechanism can actually do.
-    public static double MAX_VELOCITY_DEG_PER_SEC = 4500;
-    public static double MAX_ACCEL_DEG_PER_SEC2 = 4000;
+    // Smallest power that actually moves the turret. Tune: raise until a 1-2 deg move happens.
+    public static double kS = 0.03;
+    // Power per deg/s of target motion. Tune while spinning the robot in place with auto-aim on.
+    public static double kV = 0.00015;
 
-    // ---------------- Move (profile-tracking) gains ----------------
-    public static double kV = 0.0000067; // power per deg/s of profile velocity; start near 1/MAX_VELOCITY_DEG_PER_SEC
-    public static double kA = 0.0;         // power per deg/s^2; leave at 0 unless you've measured real inertia
-    public static double kS = 0.06;        // static-friction feedforward: min power to break stiction
-    public static double kP = 0.004;       // corrects error against the profile (not against the final target)
-    public static double kD = 0.00035;
+    // Close enough: output 0 here so the servo parks instead of hunting.
+    public static double DEADBAND_DEG = 0.3;
+    // Integral only builds within this error.
+    public static double I_ZONE_DEG = 5;
+    public static double I_MAX_POWER = 0.15;
+    // Smoothing of the target velocity estimate (0..1, higher = less smoothing).
+    public static double TARGET_VEL_ALPHA = 0.3;
 
-    // ---------------- Hold gains (used once settled at the target) ----------------
-    public static double holdKP = 0.004;
-    public static double holdKD = 0.0002;
+    public static double MAX_POWER = 1.0;
 
-    // ---------------- Cable compensation ----------------
-    // The cable pulls the turret back toward 0 with a force that grows linearly
-    // from 0 at CABLE_START_DEG to full strength at CABLE_END_DEG (spring-like).
-    // We add a position-dependent feedforward that pushes the other way.
-    // CABLE_KF = power needed at CABLE_END_DEG to hold the turret against the cable.
-    // Tune: park the turret at -180, raise CABLE_KF until it stops being dragged back.
-    // If it pushes the wrong way, flip the sign of CABLE_KF.
-    public static double CABLE_START_DEG = -60;
-    public static double CABLE_END_DEG = -180;
-    public static double CABLE_KF = 0.15;
+    public static double TOLERANCE_DEG = 5;
 
-    // ---------------- Tolerances ----------------
-    public static double POSITION_TOLERANCE_DEG = 5;
-    public static double REACQUIRE_TOLERANCE_DEG = 5;
+    // Allowed turret range. The turret is never commanded outside it.
+    public static double MIN_DEG = -170;
+    public static double MAX_DEG = 200;
 
-    // ---------------- Optional target smoothing ----------------
-    // If the incoming target itself is noisy/jittery (e.g. raw vision angle),
-    // you can slew-limit how fast the target the controller chases is allowed
-    // to move. Left huge by default (pass-through) -- the velocity law above
-    // already prevents any physical discontinuity on its own.
-    public static double MAX_TARGET_SLEW_DEG_PER_SEC = 10000;
+    // Encoder ticks per turret degree = 8192 ticks/rev * 2.923 encoder revs per turret rev / 360.
+    public static double TICKS_PER_DEG = 8192 * 2.923 / 360.0;
 
-    public boolean forceOff = false;
-
-    private final CRServo turretMotor;
+    private final CRServo servo;
     private final DcMotorEx encoder;
 
-    private double rawTargetDegrees = 0;  // last value passed to setTargetDegrees()
-    private double targetDegrees = 0;     // slew-limited target actually chased
-    private Mode mode = Mode.OFF;
-
-    private double commandedVelocity = 0; // deg/s, persists loop-to-loop
-    private double lastPositionError = 0;
-    private double lastTime = 0;
-    private boolean settled = false;
+    private double target = 0;
+    private boolean enabled = false; // stays unpowered until a target is set
+    private double integral = 0;
+    private double lastError = 0;
+    private long lastTime = 0;
+    private double lastTarget = Double.NaN;
+    private double targetVel = 0; // deg/s, filtered
 
     public Turret(HardwareMap hardwareMap) {
-        turretMotor = hardwareMap.get(CRServo.class, "turp");
-        turretMotor.setDirection(TURRET_SERVO_REVERSED
-                ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
-
-        // The motor port is only used to read an external encoder; the motor itself is never powered.
-        encoder = hardwareMap.get(DcMotorEx.class, TURRET_ENCODER_NAME);
+        servo = hardwareMap.get(CRServo.class, "turp");
         // Not reset here on purpose: the angle carries over from auto to teleop.
-        // Call resetEncoder() (gamepad1 Y in init) to zero it.
+        encoder = hardwareMap.get(DcMotorEx.class, "FR");
         encoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
-    /** Zeroes the turret angle. */
     public void resetEncoder() {
         encoder.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         encoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
-    public void start() {
-
-        lastTime = 0; // lazily re-initialized on the first control loop, see runPositionControl()
-    }
-
     public double getRawAngleDegrees() {
-        double ticksPerTurretDeg = TURRET_ENCODER_TICKS_PER_REV * TURRET_ENCODER_REVS_PER_TURRET_REV / 360.0;
-        return TURRET_ENCODER_SIGN * encoder.getCurrentPosition() / ticksPerTurretDeg;
+        return encoder.getCurrentPosition() / TICKS_PER_DEG;
     }
 
-    public void off() {
-        mode = Mode.OFF;
-        commandedVelocity = 0;
-        settled = false;
-    }
-
-    public double getTargetDegrees() {
-        return rawTargetDegrees;
-    }
-
-    /** True once the turret is within POSITION_TOLERANCE_DEG and holding. */
-    public boolean atTarget() {
-        return settled;
-    }
-
-    public void setTargetDegrees(double targetDegrees) {
-        if (Double.isNaN(targetDegrees)) return;
-        this.rawTargetDegrees = targetDegrees;
-        mode = Mode.POSITION;
-        // Nothing else to do here -- no profile to regenerate. update() picks up
-        // the new target on its very next iteration, which is what makes rapid
-        // re-targeting safe.
-    }
-
-    public Mode getMode() {
-        return mode;
-    }
-
-    public void setMode(Mode mode) {
-        this.mode = mode;
+    public void setTargetDegrees(double degrees) {
+        if (Double.isNaN(degrees)) return;
+        target = limit(degrees);
+        enabled = true;
     }
 
     /**
-     * No longer needed: gains are read directly from the static fields every
-     * loop, so dashboard tuning applies immediately. Kept as a no-op so
-     * existing call sites elsewhere don't break the build.
+     * Fits an angle into [MIN_DEG, MAX_DEG]. First tries the same direction shifted by
+     * a full turn (e.g. 120 -> -240), since that points the turret the same way.
+     * If no equivalent fits (the 80..90 gap), it stops at the nearest limit.
      */
-    @Deprecated
-    public void updatepid() {
+    private static double limit(double degrees) {
+        double a = degrees;
+        while (a > MAX_DEG) a -= 360;
+        while (a < MIN_DEG) a += 360;
+        if (a <= MAX_DEG) return a;
+
+        // Unreachable direction: go to whichever limit is closer (angle-wise).
+        double toMax = Math.abs(wrap180(a - MAX_DEG));
+        double toMin = Math.abs(wrap180(a - MIN_DEG));
+        return toMax <= toMin ? MAX_DEG : MIN_DEG;
+    }
+
+    private static double wrap180(double d) {
+        while (d > 180) d -= 360;
+        while (d < -180) d += 360;
+        return d;
+    }
+
+    public double getTargetDegrees() {
+        return target;
+    }
+
+    /** Turret speed in deg/s, from the encoder. */
+    public double getVelocityDegPerSec() {
+        return encoder.getVelocity() / TICKS_PER_DEG;
+    }
+
+    public boolean atTarget() {
+        return enabled && Math.abs(target - getRawAngleDegrees()) <= TOLERANCE_DEG;
     }
 
     public Command periodic() {
         return infinite(this::update);
     }
 
-    /** Also callable directly (e.g. from a teleop loop or a test OpMode) without the command scheduler. */
     public void tester() {
         update();
     }
 
     private void update() {
-        if (forceOff) {
-            turretMotor.setPower(0);
+        if (!enabled) {
+            servo.setPower(0);
             return;
         }
 
-        switch (mode) {
-            case POSITION:
-                runPositionControl();
-                break;
-            case OFF:
-            default:
-                turretMotor.setPower(0);
-                commandedVelocity = 0;
-                break;
+        long now = System.nanoTime();
+        double dt = lastTime == 0 ? 0.02 : clamp((now - lastTime) / 1e9, 1e-3, 0.1);
+        lastTime = now;
+
+        // How fast the target is moving (e.g. robot turning while auto-aiming).
+        double rawTargetVel = Double.isNaN(lastTarget) ? 0 : (target - lastTarget) / dt;
+        if (Math.abs(target - lastTarget) > 90) rawTargetVel = 0; // a jump (new goal / wrap), not motion
+        targetVel += TARGET_VEL_ALPHA * (rawTargetVel - targetVel);
+        lastTarget = target;
+
+        double error = target - getRawAngleDegrees();
+        double velocityError = targetVel - getVelocityDegPerSec();
+
+        // Integral: only near the target, and dropped when we cross it (stops slow overshoot/hunting).
+        if (Math.signum(error) != Math.signum(lastError)) integral = 0;
+        if (Math.abs(error) < I_ZONE_DEG && kI > 0) {
+            double maxIntegral = I_MAX_POWER / kI;
+            integral = clamp(integral + error * dt, -maxIntegral, maxIntegral);
         }
-    }
-
-    private void runPositionControl() {
-        double t = now();
-        if (lastTime == 0) {
-            // First cycle since start()/a mode switch -- just timestamp it, don't
-            // compute a dt against garbage, since System.nanoTime()'s origin is arbitrary.
-            lastTime = t;
-            return;
-        }
-        double dt = clamp(t - lastTime, 1e-3, 0.1); // clamp guards against a lag spike blowing up the slew limit
-
-        double currentAngle = getRawAngleDegrees();
-
-        // Optional slew-limit on the target itself (disabled by default, see field comment above).
-        double targetStep = clamp(rawTargetDegrees - targetDegrees,
-                -MAX_TARGET_SLEW_DEG_PER_SEC * dt, MAX_TARGET_SLEW_DEG_PER_SEC * dt);
-        targetDegrees += targetStep;
-
-        double positionError = targetDegrees - currentAngle;
-
-        if (!settled && Math.abs(positionError) <= POSITION_TOLERANCE_DEG) {
-            settled = true;
-        } else if (settled && Math.abs(positionError) > REACQUIRE_TOLERANCE_DEG) {
-            settled = false;
-        }
+        lastError = error;
 
         double power;
-        if (settled) {
-            double dError = (positionError - lastPositionError) / dt;
-            power = holdKP * positionError + holdKD * dError;
-            commandedVelocity = 0;
+        if (Math.abs(error) < DEADBAND_DEG && Math.abs(targetVel) < 1) {
+            // Parked on target and the target isn't moving: stop.
+            power = 0;
         } else {
-            double distanceRemaining = Math.abs(positionError);
-            double direction = Math.signum(positionError);
-
-            // Fastest we could be going right now and still stop exactly at the target.
-            double stoppingLimitedVel = Math.sqrt(2 * MAX_ACCEL_DEG_PER_SEC2 * distanceRemaining);
-            double desiredVelocity = direction * Math.min(MAX_VELOCITY_DEG_PER_SEC, stoppingLimitedVel);
-
-            // Slew-limit against the PREVIOUS COMMAND (not a stored plan), so it's always
-            // physically continuous no matter how much the target jumps between loops.
-            double maxDeltaV = MAX_ACCEL_DEG_PER_SEC2 * dt;
-            commandedVelocity = clamp(desiredVelocity, commandedVelocity - maxDeltaV, commandedVelocity + maxDeltaV);
-
-            double dError = (positionError - lastPositionError) / dt;
-            double ff = kV * commandedVelocity + Math.signum(commandedVelocity) * kS;
-            double fb = kP * positionError + kD * dError;
-            power = ff + fb;
+            power = kP * error
+                    + kI * integral
+                    + kD * velocityError
+                    + kV * targetVel
+                    + kS * Math.signum(error);
         }
-
-        power += cableCompensation(currentAngle);
-
-        turretMotor.setPower(clamp(power, -1.0, 1.0));
-        lastPositionError = positionError;
-        lastTime = t;
-    }
-
-    /**
-     * Counter-force for the cable. Zero above CABLE_START_DEG, ramping linearly
-     * to CABLE_KF at CABLE_END_DEG (and held there beyond it). The cable pulls
-     * toward positive angles, so the compensation is negative power.
-     */
-    private static double cableCompensation(double angleDeg) {
-        double span = CABLE_START_DEG - CABLE_END_DEG;
-        if (span == 0) return 0;
-        double frac = clamp((CABLE_START_DEG - angleDeg) / span, 0, 1);
-        return -CABLE_KF * frac;
-    }
-
-    private static double now() {
-        return System.nanoTime() / 1e9;
+        servo.setPower(clamp(power, -MAX_POWER, MAX_POWER));
     }
 
     private static double clamp(double v, double lo, double hi) {
         return Math.max(lo, Math.min(hi, v));
     }
-
-    public enum Mode {
-        POSITION,
-        OFF,
-    }
 }
-

@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 @TeleOp(name = "Hood Servo Config", group = "Test")
 public class servotest extends LinearOpMode {
 
-    public static double hoodPosition = 0.24;
+    public static double hoodPosition = 0.8;
 
     private Servo hoodp;
 

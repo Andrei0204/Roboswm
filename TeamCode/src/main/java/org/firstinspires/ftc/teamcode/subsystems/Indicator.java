@@ -32,4 +32,14 @@ public class Indicator {
         current = c;
         led.setPosition(c.pos);
     }
+
+    /**
+     * Smooth fade from RED (t = 0) through orange/yellow to GREEN (t = 1).
+     * The light's position is its hue, so the in-between values are the in-between colors.
+     */
+    public void setRedToGreen(double t) {
+        t = Math.max(0, Math.min(1, t));
+        current = null; // not one of the named colors
+        led.setPosition(Color.RED.pos + (Color.GREEN.pos - Color.RED.pos) * t);
+    }
 }

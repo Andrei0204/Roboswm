@@ -49,6 +49,22 @@ public class IntakeSystem {
         this.intakestate = intakestate;
     }
 
+    /** Selects a mode and applies it to the hardware right now, without the scheduler. Does nothing if already in that mode. */
+    public void set(double intakestate) {
+        if (intakestate == this.intakestate) return;
+        this.intakestate = intakestate;
+        if (intakestate == 0) apply(0, 0, Tavalug.Mode.UP);
+        else if (intakestate == 1 || intakestate == 3) apply(1, 1, Tavalug.Mode.COLLECT_FLOARE);
+        else if (intakestate == 2) apply(1, 0.9, Tavalug.Mode.COLLECT_FLOARE);
+        else if (intakestate == 4) apply(Intake.out, 0, Tavalug.Mode.COLLECT_FLOARE);
+    }
+
+    private void apply(double intakePower, double transferPower, Tavalug.Mode tav) {
+        intake.set(intakePower);
+        transfer.set(transferPower);
+        tavalug.setMode(tav);
+    }
+
     public double getIntakeOn() {
         return intakestate;
     }

@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 
 import static com.pedropathing.ivy.commands.Commands.*;
-import static com.pedropathing.ivy.groups.Groups.repeat;
+
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.Tavalug.Mode.COLLECT_FLOARE;
@@ -28,6 +28,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.subsystems.Intake.Flower;
 import org.firstinspires.ftc.teamcode.subsystems.Intake.IntakeSystem;
 import org.firstinspires.ftc.teamcode.subsystems.Launch.Gate;
+import org.firstinspires.ftc.teamcode.subsystems.Launch.Launcher;
 
 import org.firstinspires.ftc.teamcode.util.Alliance;
 import org.firstinspires.ftc.teamcode.util.CommandOpMode;
@@ -37,40 +38,27 @@ import org.firstinspires.ftc.teamcode.util.ShotTable;
 @Config
 public class Tele extends CommandOpMode {
 
-    public static double flywheelspeed = 0, anglepivot = 0.24, anglenorm = 0, anglenou = 1;
+    public static double flywheelspeed = 0, anglepivot = 0.32, anglenorm = 0, anglenou = 1;
+    // One trigger press = gate open + continuous feed for this long (same as holding the trigger).
+    // Make it long enough to empty a full load; used by ShooterTuneTele too.
+    public static long LAUNCH_MS = 1500;
     Alliance alliance;
     Pose Goal;
-    /** Gamepad2 dpad step (inches) for the aim offset of the selected goal. */
-    public static double AIM_OFFSET_STEP = 0.5;
-    // Field-frame aim offsets, one per goal (index 0 = audience, 1 = rear).
-    double[] aimOffX = new double[2], aimOffY = new double[2];
 
-    boolean isAudienceGoal() {
-        return Goal.x() == ShootingCalc.RED_AUD.x() && Goal.y() == ShootingCalc.RED_AUD.y()
-                || Goal.x() == ShootingCalc.BLUE_AUD.x() && Goal.y() == ShootingCalc.BLUE_AUD.y();
-    }
-
-    /** Selected goal + its dpad offset: the point the turret and shot table actually aim at. */
-    Pose aimGoal() {
-        int i = isAudienceGoal() ? 0 : 1;
-        return new Pose(Goal.x() + aimOffX[i], Goal.y() + aimOffY[i]);
-    }
-    Pose robopose= null;
-    Pose turpose=null;
+    Pose robopose = null;
+    Pose turpose = null;
     public static boolean useShotTable = true;
     // Turret pivot offset from the robot center, robot frame (x forward, y left), inches. Tune from your CAD.
     public static double TURRET_OFFSET_X = -2.6, TURRET_OFFSET_Y = 0;
-    private boolean lastLeftTrigger = false;
 
     boolean flowerDown = false;
 
-    /** Fixed shot used while gamepad2.a manual mode is on. */
-    public static double MANUAL_RPM = 2550, MANUAL_HOOD = 0.268;
+    /**
+     * Fixed shot used while gamepad2.a manual mode is on.
+     */
 
-    public static double GOAL_FLASH_MS = 600;
-    public static double LAUNCH_GAP_MS = 1;
-    long goalFlashUntil = 0;
-    Indicator.Color goalFlashColor = Indicator.Color.BLUE;
+    // RPM error at which the light is fully red; it fades to green as the error shrinks.
+    public static double LIGHT_RED_RPM = 300;
     RoboModules r;
     double distance;
     IntakeSystem is;
@@ -106,118 +94,49 @@ public class Tele extends CommandOpMode {
     @Override
     public void init_loop() {
         if (gamepad1.y) r.t.resetEncoder();
-        telemetry.addData("turrey",r.t.getRawAngleDegrees());
+        telemetry.addData("turrey", r.t.getRawAngleDegrees());
         telemetry.update();
     }
 
 
     @Override
     public void start() {
-        if(OpModeStorage.autonomousEndPose.x()!=0)
+        if (OpModeStorage.autonomousEndPose.x() != 0)
             follower.setPose(OpModeStorage.autonomousEndPose);
         follower.update();
-        robopose =follower.pose();
+        robopose = follower.pose();
         r.p.set(0.24);
 
 
-        Command activateShooter = infinite(() -> {
-                    r.p.setPos(anglepivot);
-                    shootcalc();
-                }
-        );
-        Scheduler.schedule(
-                r.t.periodic(),
-                r.l.periodic(), r.p.periodic(),
-                activateShooter,
-                updatespeed()
-
-        );
-        OpModeStorage.autonomousEndPose=new Pose(0,0);
+        OpModeStorage.autonomousEndPose = new Pose(0, 0);
     }
 
     @Override
     public void loop() {
-        robopose =follower.pose();
+        robopose = follower.pose();
         turpose = getTurretPose(robopose);
 
 
         follower.update();
-        Scheduler.execute();
+        Scheduler.execute(); 
+
         teleopdrive();
-
-        turret();
-        updateIndicator();
-
+        update();
         telemetry();
-        if (Goal != null) {
-            int gi = isAudienceGoal() ? 0 : 1;
-            // Driver perspective: up = away from the driver (toward the goals), right = driver's right.
-            // Red driver looks along +x (right = -y); blue driver looks along -x (right = +y).
-            double s = alliance == Alliance.RED ? 1 : -1;
-            if (gamepad2.dpadUpWasPressed()) aimOffX[gi] += s * AIM_OFFSET_STEP;
-            if (gamepad2.dpadDownWasPressed()) aimOffX[gi] -= s * AIM_OFFSET_STEP;
-            if (gamepad2.dpadRightWasPressed()) aimOffY[gi] -= s * AIM_OFFSET_STEP;
-            if (gamepad2.dpadLeftWasPressed()) aimOffY[gi] += s * AIM_OFFSET_STEP;
-        }
         if (gamepad1.dpadDownWasPressed()) {
-            java.util.Arrays.fill(aimOffX, 0);
-            java.util.Arrays.fill(aimOffY, 0);
+
             follower.setPose(alliance == Alliance.RED ? ShootingCalc.RED_START : ShootingCalc.BLUE_START);
         }
         if (gamepad1.right_trigger > 0.2)
             Scheduler.schedule(launch());
 
-        if (gamepad1.rightBumperWasPressed())
-            Scheduler.schedule(toggleIntake(true));
-        if (gamepad1.rightBumperWasReleased())
-            Scheduler.schedule(toggleIntake(false));
-        // Failsafe: hold left bumper to reverse only the intake, release to stop.
+        // Intake runs while the bumper is held OR while a shot is feeding.
+        // Set directly every loop, so shooting can never block or override it.
+        is.set(feeding ? 2 : gamepad1.right_bumper ? 1 : 0);
 
-
-        boolean leftTrigger = gamepad1.left_trigger > 0.5;
-
-        if (leftTrigger && !lastLeftTrigger)
-            Scheduler.schedule(reverseIntake(true));
-
-        if (!leftTrigger && lastLeftTrigger)
-            Scheduler.schedule(reverseIntake(false));
-
-        lastLeftTrigger = leftTrigger;
-
-
-        if(gamepad1.bWasPressed()){
+        if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
             onGoalSwitched();
-            Goal=ShootingCalc.other(alliance,Goal);
-            flashGoal();
-        }
-        if (gamepad2.aWasPressed()) {
-            // Toggle: ShotTable lookup <-> fixed manual shot (same as auto.setShot(2500, 0.268)).
-            if (useShotTable) {
-                Scheduler.schedule(setManualShot(MANUAL_RPM, MANUAL_HOOD));
-                gamepad1.rumble(1000);
-                gamepad2.rumble(1000);
-            } else {
-                useShotTable = true;
-                r.led.set(goalFlashColor);
-            }
-        }
-        if(gamepad2.bWasPressed()){
-            onGoalSwitched();
-            Goal=ShootingCalc.other(alliance,Goal);
-            flashGoal();
-        }
-
-
-        if (gamepad1.leftBumperWasPressed()) {
-            flowerDown = !flowerDown;
-
-            if (flowerDown) {
-                r.f.setMode(Flower.Mode.DOWN);
-                r.tav.setMode(COLLECT_FLOARE);
-            } else {
-                r.f.setMode(Flower.Mode.UP);
-                r.tav.setMode(COLLECT_FLOARE);
-            }
+            Goal = ShootingCalc.other(alliance, Goal);
         }
     }
 
@@ -240,6 +159,21 @@ public class Tele extends CommandOpMode {
         return aud ? "AUDIENCE" : "REAR";
     }
 
+    /**
+     * All per-loop subsystem updates, run directly (no scheduler/commands).
+     */
+    void update() {
+        r.p.setPos(anglepivot);
+        shootcalc();
+        r.l.updateshooting(flywheelspeed);
+        turret();
+        r.t.tester();
+        r.l.tester();
+        r.p.tester();
+        r.bs.update();
+        rpmLight();
+    }
+
     void telemetry() {
         double cmdDeg = Math.toDegrees(anglenorm);
         double turDeg = r.t.getRawAngleDegrees();
@@ -252,8 +186,7 @@ public class Tele extends CommandOpMode {
         telemetry.addLine("=== GOAL ===");
         telemetry.addData("goal", "%s %s  (%.1f, %.1f)", alliance, goalName(),
                 Goal == null ? Double.NaN : Goal.x(), Goal == null ? Double.NaN : Goal.y());
-        telemetry.addData("aim offset aud x,y", "%.1f, %.1f", aimOffX[0], aimOffY[0]);
-        telemetry.addData("aim offset rear x,y", "%.1f, %.1f", aimOffX[1], aimOffY[1]);
+
         telemetry.addData("switches", switchCount);
 
         // ===== POSE (odometry) =====
@@ -271,10 +204,11 @@ public class Tele extends CommandOpMode {
         telemetry.addData("cmd = bearing - heading (wrapped)", "%.1f", cmdDeg);
         telemetry.addData("turret actual deg (encoder)", "%.1f", turDeg);
         telemetry.addData("turret error deg", "%.1f", turErr);
-        telemetry.addData("turret at target / mode", "%s / %s", r.t.atTarget(), r.t.getMode());
+        telemetry.addData("turret at target", r.t.atTarget());
         telemetry.addData("WRAP>180 jumps", "%d  (last %.0f -> %.0f)", wrapCount, lastWrapFrom, lastWrapTo);
         telemetry.addData("ENCODER OUT OF +-180?", Math.abs(turDeg) > 180 ? "YES -> will unwind " + Math.round(turErr) + " deg" : "no");
-        if (Math.abs(turErr) > 180) telemetry.addData("!!! TURRET MUST SPIN", "%.0f deg (wrap problem)", turErr);
+        if (Math.abs(turErr) > 180)
+            telemetry.addData("!!! TURRET MUST SPIN", "%.0f deg (wrap problem)", turErr);
         if (switchCount > 0) {
             telemetry.addData("last switch: cmd before -> now", "%.1f -> %.1f  (jump %.1f)",
                     switchFromCmd, cmdDeg, wrap180(cmdDeg - switchFromCmd));
@@ -293,21 +227,28 @@ public class Tele extends CommandOpMode {
 
         // ===== OTHER =====
         telemetry.addLine("=== OTHER ===");
-        telemetry.addData("floare",r.f.getMode());
+        telemetry.addData("floare", r.f.getMode());
         telemetry.addData("sensor", r.bs.debug());
         telemetry.update();
     }
 
 
-
-    /** Call right after the goal changes: flashes BLUE for audience, VIOLET for rear. */
-    void flashGoal() {
-        boolean aud = Goal.x() == ShootingCalc.RED_AUD.x() && Goal.y() == ShootingCalc.RED_AUD.y()
-                || Goal.x() == ShootingCalc.BLUE_AUD.x() && Goal.y() == ShootingCalc.BLUE_AUD.y();
-        goalFlashColor = aud ? Indicator.Color.BLUE : Indicator.Color.VIOLET;
-        r.led.set(goalFlashColor);
-//        r.led.set(useShotTable ? goalFlashColor : Indicator.Color.ORANGE);
-
+    /**
+     * Light fades RED -> orange -> yellow -> GREEN as the flywheel gets closer to its target RPM.
+     * Full green once within the launcher's TOLERANCE_RPM. Off while the flywheel has no target.
+     */
+    void rpmLight() {
+        double target = r.l.getTargetRPM();
+        if (target == 0) {
+            r.led.set(Indicator.Color.OFF);
+            return;
+        }
+        double err = Math.abs(target - r.l.getRPM());
+        double tol = Launcher.TOLERANCE_RPM;
+        double far = Math.max(LIGHT_RED_RPM, tol + 1);
+        // 1 = at speed (green), 0 = LIGHT_RED_RPM or more off (red).
+        double t = 1 - (err - tol) / (far - tol);
+        r.led.setRedToGreen(t);
     }
 
     Command setManualShot(double rpm, double hood) {
@@ -320,69 +261,48 @@ public class Tele extends CommandOpMode {
 
     /**
      * Driver light, highest priority first:
-     *  BLUE / VIOLET = just switched goal (audience / rear), briefly
-     *  GREEN         = 3 pollen loaded (yellow steadily in front of the sensor)
-     *  OFF           = otherwise
+     * BLUE / VIOLET = just switched goal (audience / rear), briefly
+     * GREEN         = 3 pollen loaded (yellow steadily in front of the sensor)
+     * OFF           = otherwise
      */
-    void updateIndicator() {
-        r.bs.update();
-    }
 
-    public Command launch() {
+
+    /** True while a shot is feeding balls; the intake is turned on from loop() while this is set. */
+    boolean feeding = false;
+
+    /**
+     * One press: open the gate and feed continuously for LAUNCH_MS, then close.
+     * A tap now does the same as holding the trigger used to (one long uninterrupted feed).
+     * Only touches the gate; the intake itself is driven from loop(), so it never fights the bumper.
+     * Re-scheduling while it is running is ignored (CANCEL); holding longer just starts another burst.
+     */
+    private Command launch() {
         return sequential(
                 r.g.setcom(Gate.Mode.OPEN),
-                is.run(1),
-                waitMs(400),
+                waitMs(70),
+                instant(() -> feeding = true),
+                waitMs(10),
+                is.setIn(1),
+                waitMs(org.firstinspires.ftc.teamcode.subsystems.Tele.LAUNCH_MS),
                 r.g.setcom(Gate.Mode.CLOSE),
-                is.run(0)
+                instant(() -> feeding = false)
         )
-                .requiring(is)
+                .requiring(r.g)
                 .setPriority(10)
                 .setConflictBehavior(ConflictBehavior.CANCEL);
     }
-
-    /** Hold-to-shoot: gate open + intake on while held, gate closed + intake off on release. */
-    public Command toggleIntake(boolean held) {
-        return sequential(
-//                r.g.setcom(held ? Gate.Mode.OPEN : Gate.Mode.CLOSE),
-                is.run(held ? 1 : 0)
-        )
-                .requiring(is)
-                .setPriority(held ? 10 : 11)
-                .setConflictBehavior(ConflictBehavior.CANCEL);
-    }
-
-    /** Failsafe: reverse only the intake while held, stop on release. Overrides shooting/intake commands. */
-    public Command reverseIntake(boolean held) {
-        return sequential(
-                is.run(held ? 4 : 0)
-        )
-                .requiring(is)
-                .setPriority(held ? 12 : 13)
-                .setConflictBehavior(ConflictBehavior.CANCEL);
-    }
-
-    public Command updatespeed() {
-        return
-                infinite(() ->
-                        r.l.updateshooting(flywheelspeed)
-                );
-    }
-
-    /** Sets flywheel RPM + hood from the distance to the goal when useShotTable is on. */
+    /**
+     * Sets flywheel RPM + hood from the distance to the goal when useShotTable is on.
+     */
     public void shootcalc() {
         if (!useShotTable || robopose == null || Goal == null) return;
-        Pose aim = aimGoal();
+        Pose aim = Goal;
         distance = Math.hypot(aim.x() - turpose.x(), aim.y() - turpose.y());
         ShotTable.Shot shot = ShotTable.get(Math.abs(distance));
         flywheelspeed = shot.rpm;
         anglepivot = shot.hood;
     }
 
-    /**
-     * Turret pivot position on the field = robot pose + the turret offset rotated by the robot heading.
-     * Offset is in the robot frame (x forward, y left), same units as the field (inches).
-     */
     Pose getTurretPose(Pose robot) {
         double h = robot.heading();
         double cos = Math.cos(h), sin = Math.sin(h);
@@ -395,7 +315,7 @@ public class Tele extends CommandOpMode {
     void turret() {
 
         // Aim from the turret's own position, not from the robot center.
-        Pose aim = aimGoal();
+        Pose aim = Goal;
         double dx = aim.x() - turpose.x();
         double dy = aim.y() - turpose.y();
         // Field-frame bearing from the turret to the goal.
@@ -420,8 +340,6 @@ public class Tele extends CommandOpMode {
         hasPrevCmd = true;
         r.t.setTargetDegrees(cmdDeg);
     }
-
-    /** DIAG: call right after Goal changes; remembers the turret command before/after the switch. */
     void onGoalSwitched() {
         switchCount++;
         switchFromCmd = prevCmdDeg;
@@ -433,8 +351,8 @@ public class Tele extends CommandOpMode {
 
     public void teleopdrive() {
         follower.manual(-gamepad1.left_stick_y,
-              -  gamepad1.left_stick_x,
-               Math.abs(gamepad1.right_stick_x)<0.2 ? 0 : -gamepad1.right_stick_x
+                -gamepad1.left_stick_x,
+                Math.abs(gamepad1.right_stick_x) < 0.2 ? 0 : -gamepad1.right_stick_x
         );
     }
 
