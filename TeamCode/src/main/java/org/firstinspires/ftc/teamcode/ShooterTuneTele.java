@@ -19,6 +19,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.subsystems.Intake.IntakeSystem;
 import org.firstinspires.ftc.teamcode.subsystems.Launch.Gate;
 import org.firstinspires.ftc.teamcode.subsystems.RoboModules;
+import org.firstinspires.ftc.teamcode.subsystems.Tele;
 import org.firstinspires.ftc.teamcode.util.Alliance;
 import org.firstinspires.ftc.teamcode.util.CommandOpMode;
 import org.firstinspires.ftc.teamcode.util.ShootingCalc;
@@ -306,9 +307,17 @@ public class ShooterTuneTele extends CommandOpMode {
             double a = Math.atan2(dy, dx) - robotPose.heading();
             while (a > Math.PI) a -= 2 * Math.PI;
             while (a < -Math.PI) a += 2 * Math.PI;
-            turretTargetDeg = Math.toDegrees(a) + turretTrim;
+            turretTargetDeg = Math.toDegrees(a) + turretTrim + sideOffsetDeg();
         }
         r.t.setTargetDegrees(turretTargetDeg);
+    }
+
+    /** Same side correction as Tele.sideOffsetDeg(), using Tele's dashboard values. */
+    private double sideOffsetDeg() {
+        double dxGoal = robotPose.x() - goal.x();
+        if (dxGoal < -Tele.SIDE_X_THRESHOLD) return Tele.LEFT_SIDE_OFFSET_DEG;
+        if (dxGoal > Tele.SIDE_X_THRESHOLD) return Tele.RIGHT_SIDE_OFFSET_DEG;
+        return 0;
     }
 
     // ------------------------------------------------------------------ telemetry
@@ -328,6 +337,8 @@ public class ShooterTuneTele extends CommandOpMode {
         telemetry.addData("Turret error", "%+.1f deg  %s", turretErr,
                 Math.abs(turretErr) < 2 ? "CENTERED" : (turretErr > 0 ? "<< needs +" : "needs - >>"));
         telemetry.addData("Turret on target", r.t.atTarget());
+        telemetry.addData("Side offset", "%+.1f deg  (robot x - goal x = %.1f)%s",
+                sideOffsetDeg(), robotPose.x() - goal.x(), autoAim ? "" : "  [not applied: HOLD 0]");
         telemetry.addData("Nudge x/y | trim", "%+.1f / %+.1f in | %+.1f deg  (%s step)",
                 nudgeX[g], nudgeY[g], turretTrim, aimFine ? "fine" : "coarse");
         telemetry.addData("GOAL LINE", "new Pose(%.1f, %.1f)", goal.x(), goal.y());

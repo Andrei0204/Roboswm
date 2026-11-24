@@ -41,7 +41,7 @@ public class Tele extends CommandOpMode {
     public static double flywheelspeed = 0, anglepivot = 0.32, anglenorm = 0, anglenou = 1;
     // One trigger press = gate open + continuous feed for this long (same as holding the trigger).
     // Make it long enough to empty a full load; used by ShooterTuneTele too.
-    public static long LAUNCH_MS = 1500;
+    public static long LAUNCH_MS = 600;
     Alliance alliance;
     Pose Goal;
 
@@ -205,6 +205,8 @@ public class Tele extends CommandOpMode {
         telemetry.addData("turret actual deg (encoder)", "%.1f", turDeg);
         telemetry.addData("turret error deg", "%.1f", turErr);
         telemetry.addData("turret at target", r.t.atTarget());
+        telemetry.addData("side offset deg", "%+.1f  (robot x - goal x = %.1f)",
+                sideOffsetDeg(), robopose.x() - Goal.x());
         telemetry.addData("WRAP>180 jumps", "%d  (last %.0f -> %.0f)", wrapCount, lastWrapFrom, lastWrapTo);
         telemetry.addData("ENCODER OUT OF +-180?", Math.abs(turDeg) > 180 ? "YES -> will unwind " + Math.round(turErr) + " deg" : "no");
         if (Math.abs(turErr) > 180)
@@ -281,7 +283,7 @@ public class Tele extends CommandOpMode {
                 r.g.setcom(Gate.Mode.OPEN),
                 waitMs(70),
                 instant(() -> feeding = true),
-                waitMs(10),
+                waitMs(20),
                 is.setIn(1),
                 waitMs(org.firstinspires.ftc.teamcode.subsystems.Tele.LAUNCH_MS),
                 r.g.setcom(Gate.Mode.CLOSE),
@@ -312,6 +314,20 @@ public class Tele extends CommandOpMode {
                 h);
     }
 
+    // Extra turret angle when the robot is far to one side of the goal (along field x).
+    // If it makes shots miss MORE on a side, flip that side's sign.
+    public static double SIDE_X_THRESHOLD = 15;
+    public static double LEFT_SIDE_OFFSET_DEG = -1;   // robot x < goal x - threshold
+    public static double RIGHT_SIDE_OFFSET_DEG = 1; // robot x > goal x + threshold
+
+    /** The side correction currently being added to the turret angle, in degrees. */
+    double sideOffsetDeg() {
+        double dxGoal = robopose.x() - Goal.x();
+        if (dxGoal < -SIDE_X_THRESHOLD) return LEFT_SIDE_OFFSET_DEG;
+        if (dxGoal > SIDE_X_THRESHOLD) return RIGHT_SIDE_OFFSET_DEG;
+        return 0;
+    }
+
     void turret() {
 
         // Aim from the turret's own position, not from the robot center.
@@ -329,7 +345,7 @@ public class Tele extends CommandOpMode {
         while (anglenorm > Math.PI) anglenorm -= 2 * Math.PI;
         while (anglenorm < -Math.PI) anglenorm += 2 * Math.PI;
 
-        double cmdDeg = Math.toDegrees(anglenorm);
+        double cmdDeg = Math.toDegrees(anglenorm) + sideOffsetDeg();
         // DIAG: detect the command wrapping across +-180 (turret would then spin ~360 deg the other way).
         if (hasPrevCmd && Math.abs(cmdDeg - prevCmdDeg) > 180) {
             wrapCount++;

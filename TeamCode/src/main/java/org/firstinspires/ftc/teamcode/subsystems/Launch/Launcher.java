@@ -27,8 +27,8 @@ public class Launcher {
     public static double kS = 0.0;
 
     // Feedback on top of the feedforward.
-    public static double kP = 0.001;
-    public static double kI = 0.003;
+    public static double kP = 0.001    ;
+    public static double kI = 0.0035;
     public static double kD = 0;
 
     // Integral only accumulates within this many RPM of the target.
