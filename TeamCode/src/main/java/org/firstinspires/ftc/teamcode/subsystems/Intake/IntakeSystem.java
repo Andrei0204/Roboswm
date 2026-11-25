@@ -31,7 +31,7 @@ public class IntakeSystem {
         LinkedHashMap<BooleanSupplier, Command> cases = new LinkedHashMap<>();
         cases.put(() -> intakestate == 0, mode(0, 0, Tavalug.Mode.UP));
         cases.put(() -> intakestate == 1, mode(1, 1, Tavalug.Mode.COLLECT_FLOARE));
-        cases.put(() -> intakestate == 2, mode(1, 0.85, Tavalug.Mode.COLLECT_FLOARE));
+        cases.put(() -> intakestate == 2, mode(0.6  , 0.9, Tavalug.Mode.COLLECT_FLOARE));
         cases.put(() -> intakestate == 3, mode(1, 1, Tavalug.Mode.COLLECT_FLOARE));                    //aicia e cv
         cases.put(() -> intakestate == 4, mode(Intake.out, 0, Tavalug.Mode.COLLECT_FLOARE));
         applyMode = branch(cases);
@@ -55,7 +55,7 @@ public class IntakeSystem {
         this.intakestate = intakestate;
         if (intakestate == 0) apply(0, 0, Tavalug.Mode.UP);
         else if (intakestate == 1 || intakestate == 3) apply(1, 1, Tavalug.Mode.COLLECT_FLOARE);
-        else if (intakestate == 2) apply(1, 0.9, Tavalug.Mode.COLLECT_FLOARE);
+        else if (intakestate == 2) apply(0.6, 0.87, Tavalug.Mode.INIT);
         else if (intakestate == 4) apply(Intake.out, 0, Tavalug.Mode.COLLECT_FLOARE);
     }
 

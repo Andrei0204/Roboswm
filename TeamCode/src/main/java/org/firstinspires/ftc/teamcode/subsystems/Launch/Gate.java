@@ -36,7 +36,7 @@ public class Gate {
 
     public enum Mode {
         OPEN(0.15),
-        CLOSE(0.34);
+        CLOSE(0.4);
         public double position;
 
         Mode(double position) {

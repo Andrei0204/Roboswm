@@ -52,13 +52,15 @@ public class Tele extends CommandOpMode {
     public static double TURRET_OFFSET_X = -2.6, TURRET_OFFSET_Y = 0;
 
     boolean flowerDown = false;
+    /** Field y (in) where the goal auto-switches between audience and rear. Tunable on the dashboard. */
+    public static double FAR_Y = 72;
+    /** When true the goal switches by itself as the robot crosses FAR_Y (B still toggles, until the next crossing). */
+    public static boolean AUTO_SIDE = true;
 
     /**
      * Fixed shot used while gamepad2.a manual mode is on.
      */
 
-    // RPM error at which the light is fully red; it fades to green as the error shrinks.
-    public static double LIGHT_RED_RPM = 300;
     RoboModules r;
     double distance;
     IntakeSystem is;
@@ -115,7 +117,7 @@ public class Tele extends CommandOpMode {
     public void loop() {
         robopose = follower.pose();
         turpose = getTurretPose(robopose);
-
+        autoSwitchGoal();
 
         follower.update();
         Scheduler.execute(); 
@@ -152,7 +154,7 @@ public class Tele extends CommandOpMode {
         return d;
     }
 
-    String goalName() {
+    String  goalName() {
         if (Goal == null) return "null";
         boolean aud = Goal.x() == ShootingCalc.RED_AUD.x() && Goal.y() == ShootingCalc.RED_AUD.y()
                 || Goal.x() == ShootingCalc.BLUE_AUD.x() && Goal.y() == ShootingCalc.BLUE_AUD.y();
@@ -235,22 +237,9 @@ public class Tele extends CommandOpMode {
     }
 
 
-    /**
-     * Light fades RED -> orange -> yellow -> GREEN as the flywheel gets closer to its target RPM.
-     * Full green once within the launcher's TOLERANCE_RPM. Off while the flywheel has no target.
-     */
+    /** Driver light: AMBER = shooting at the audience goal, BLUE = rear goal. */
     void rpmLight() {
-        double target = r.l.getTargetRPM();
-        if (target == 0) {
-            r.led.set(Indicator.Color.OFF);
-            return;
-        }
-        double err = Math.abs(target - r.l.getRPM());
-        double tol = Launcher.TOLERANCE_RPM;
-        double far = Math.max(LIGHT_RED_RPM, tol + 1);
-        // 1 = at speed (green), 0 = LIGHT_RED_RPM or more off (red).
-        double t = 1 - (err - tol) / (far - tol);
-        r.led.setRedToGreen(t);
+        r.led.set(goalName().equals("AUDIENCE") ? Indicator.Color.AMBER : Indicator.Color.BLUE);
     }
 
     Command setManualShot(double rpm, double hood) {
@@ -300,7 +289,10 @@ public class Tele extends CommandOpMode {
         if (!useShotTable || robopose == null || Goal == null) return;
         Pose aim = Goal;
         distance = Math.hypot(aim.x() - turpose.x(), aim.y() - turpose.y());
-        ShotTable.Shot shot = ShotTable.get(Math.abs(distance));
+        // Robot past the goal's y (y > goal y on audience, y < goal y on rear): use the smallest shot in the table.
+        boolean aud = goalName().equals("AUDIENCE");
+        boolean farSide = aud ? robopose.y() > Goal.y() : robopose.y() < Goal.y();
+        ShotTable.Shot shot = farSide ? ShotTable.get(ShotTable.minDistance()) : ShotTable.get(Math.abs(distance));
         flywheelspeed = shot.rpm;
         anglepivot = shot.hood;
     }
@@ -356,6 +348,20 @@ public class Tele extends CommandOpMode {
         hasPrevCmd = true;
         r.t.setTargetDegrees(cmdDeg);
     }
+    Boolean lastAudSide = null;
+
+    /** Switches the goal when the robot crosses FAR_Y (audience side y < FAR_Y, rear side y > FAR_Y). B can still override in between. */
+    void autoSwitchGoal() {
+        if (!AUTO_SIDE || robopose == null || Goal == null) return;
+        boolean audSide = robopose.y() < FAR_Y;
+        if (lastAudSide != null && audSide != lastAudSide
+                && audSide != goalName().equals("AUDIENCE")) {
+            onGoalSwitched();
+            Goal = ShootingCalc.other(alliance, Goal);
+        }
+        lastAudSide = audSide;
+    }
+
     void onGoalSwitched() {
         switchCount++;
         switchFromCmd = prevCmdDeg;

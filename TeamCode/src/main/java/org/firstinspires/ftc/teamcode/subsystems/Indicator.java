@@ -11,9 +11,10 @@ public class Indicator {
         OFF(0),
         RED(0.277),
         ORANGE(0.333),
+        AMBER(0.36),
         YELLOW(0.388),
         GREEN(0.5),
-        BLUE(0.3398), VIOLET(0.598),
+        BLUE(0.611), VIOLET(0.598),
         WHITE(1.0);
         public final double pos;
         Color(double pos) { this.pos = pos; }

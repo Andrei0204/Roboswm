@@ -47,12 +47,12 @@ public class Tavalug {
     }
 
     public enum Mode {
-        INIT(0.7), //0.7 buna
+        INIT(0.55), //0.7 buna
         /** Collects every ball (POLLEN and NECTAR). */
         COLLECT_ALL(0.52), // 0.57 valoare buna
 
         COLLECT_POLLEN(0.75),
-        UP(0.7),
+        UP(0.55),
 
         COLLECT_FLOARE(0.52 );// era 0.55 dar nu mergea mereu,
         public double position;

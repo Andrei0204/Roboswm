@@ -23,33 +23,33 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 @Config
 public class Launcher {
     // Feedforward. kV = power per RPM at NOMINAL_VOLTAGE. Tune kV FIRST with kP = kI = 0 (see tuning notes).
-    public static double kV = 0.00016;
+    public static double kV =0.0002;
     public static double kS = 0.0;
 
     // Feedback on top of the feedforward.
-    public static double kP = 0.001    ;
-    public static double kI = 0.0035;
-    public static double kD = 0;
+    public static double kP = 0.0015;
+    public static double kI = 0.0001;
+    public static double kD = 0.0000;
 
     // Integral only accumulates within this many RPM of the target.
     public static double I_ZONE_RPM = 200;
     // Most power the integral term may add or remove.
     public static double I_MAX_POWER = 0.3;
 
-    public static double NOMINAL_VOLTAGE = 12.5;
+    public static double NOMINAL_VOLTAGE = 12;
 
     public static double TOLERANCE_RPM = 120;
 
     // More than BRAKE_OVER_RPM above target -> BRAKE_POWER. Closer than that the PID handles it
     // (it can lower power to 0, but never reverses).
-    public static double BRAKE_OVER_RPM = 150;
+    public static double BRAKE_OVER_RPM = 170;
     public static double BRAKE_POWER = -0.2;
 
     // Bang-bang: more than BANG_BANG_RPM below target -> full power (fast spin-up and
     // recovery after a shot). Closer than that, feedforward + PID take over.
     // Keep it at or below I_ZONE_RPM so the integral is already working at the hand-off.
     public static boolean BANG_BANG = true;
-    public static double BANG_BANG_RPM = 125;
+    public static double BANG_BANG_RPM = 100;
     public static double BANG_BANG_POWER = 1.0;
 
     private final DcMotorEx motor;
