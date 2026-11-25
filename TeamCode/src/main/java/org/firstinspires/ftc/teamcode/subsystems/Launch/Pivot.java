@@ -45,7 +45,7 @@ public class Pivot {
         if(set>0.62)
             set=0.62;
         if(set <0.43)
-            set=0.43 ;
+            set=0.43;
 
 
         p.setPosition(set);

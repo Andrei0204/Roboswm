@@ -31,18 +31,14 @@ public class IntakeSystem {
         LinkedHashMap<BooleanSupplier, Command> cases = new LinkedHashMap<>();
         cases.put(() -> intakestate == 0, mode(0, 0, Tavalug.Mode.UP));
         cases.put(() -> intakestate == 1, mode(1, 1, Tavalug.Mode.COLLECT_FLOARE));
-        cases.put(() -> intakestate == 2, mode(0.6  , 0.9, Tavalug.Mode.COLLECT_FLOARE));
+        cases.put(() -> intakestate == 2, instant(() -> applyShoot(0.6, Tavalug.Mode.COLLECT_FLOARE)));
         cases.put(() -> intakestate == 3, mode(1, 1, Tavalug.Mode.COLLECT_FLOARE));                    //aicia e cv
         cases.put(() -> intakestate == 4, mode(Intake.out, 0, Tavalug.Mode.COLLECT_FLOARE));
         applyMode = branch(cases);
     }
 
     private Command mode(double intakePower, double transferPower, Tavalug.Mode tav) {
-        return instant(() -> {
-            intake.set(intakePower);
-            transfer.set(transferPower);
-            tavalug.setMode(tav);
-        });
+        return instant(() -> apply(intakePower, transferPower, tav));
     }
 
     public void setIntakeOn(double intakestate) {
@@ -55,7 +51,7 @@ public class IntakeSystem {
         this.intakestate = intakestate;
         if (intakestate == 0) apply(0, 0, Tavalug.Mode.UP);
         else if (intakestate == 1 || intakestate == 3) apply(1, 1, Tavalug.Mode.COLLECT_FLOARE);
-        else if (intakestate == 2) apply(0.6, 0.87, Tavalug.Mode.INIT);
+        else if (intakestate == 2) applyShoot(0.6, Tavalug.Mode.INIT);
         else if (intakestate == 4) apply(Intake.out, 0, Tavalug.Mode.COLLECT_FLOARE);
     }
 
@@ -63,6 +59,18 @@ public class IntakeSystem {
         intake.set(intakePower);
         transfer.set(transferPower);
         tavalug.setMode(tav);
+    }
+
+    /** Shooting: transfer runs on the encoder velocity PID instead of fixed power. */
+    private void applyShoot(double intakePower, Tavalug.Mode tav) {
+        intake.set(intakePower);
+        transfer.shoot();
+        tavalug.setMode(tav);
+    }
+
+    /** Call every loop: runs the transfer PID (no-op unless shooting). */
+    public void updatePid() {
+        transfer.update();
     }
 
     public double getIntakeOn() {

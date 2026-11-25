@@ -69,6 +69,7 @@ public class Auto extends CommandOpMode {
         telemetry.update();
     }
     public void update(Pose pose){
+        is.updatePid();
         if (pose == null) return;
         robopose=pose;
         turpose = getTurretPose(pose);

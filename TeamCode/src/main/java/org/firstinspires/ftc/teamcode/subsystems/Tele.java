@@ -166,6 +166,7 @@ public class Tele extends CommandOpMode {
      */
     void update() {
         r.p.setPos(anglepivot);
+        is.updatePid();
         shootcalc();
         r.l.updateshooting(flywheelspeed);
         turret();
@@ -183,6 +184,13 @@ public class Tele extends CommandOpMode {
         double bearingDeg = Math.toDegrees(anglenou);
         double headingDeg = robopose == null ? Double.NaN : Math.toDegrees(robopose.heading());
         boolean clamped = distance < ShotTable.minDistance() || distance > ShotTable.maxDistance();
+
+        // ===== TRANSFER =====
+        telemetry.addLine("=== TRANSFER ===");
+        telemetry.addData("transfer speed", "%.0f ticks/s", r.tr.getVelocity());
+        telemetry.addData("transfer target", r.tr.isShooting()
+                ? String.format("%.0f ticks/s", org.firstinspires.ftc.teamcode.subsystems.Intake.Transfer.targetVelocity)
+                : "off (PID inactive)");
 
         // ===== GOAL =====
         telemetry.addLine("=== GOAL ===");

@@ -8,7 +8,7 @@ import com.pedropathing.math.Pose;
 @Config
 public class ShootingCalc {
     public static Pose RED_AUD = new Pose(60, 56);
-    public static Pose RED_REAR = new Pose(58, 80);
+    public static Pose RED_REAR = new Pose(58, 76);
     public static Pose RED_START = new Pose(6.9, 6.9, 0);
     public static Pose BLUE_AUD = new Pose(84, 55);
     public static Pose BLUE_REAR = new Pose(84, 80);
