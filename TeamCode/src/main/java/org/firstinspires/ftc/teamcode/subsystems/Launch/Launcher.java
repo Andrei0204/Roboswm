@@ -27,7 +27,7 @@ public class Launcher {
     public static double kS = 0.0;
 
     // Feedback on top of the feedforward.
-    public static double kP = 0.0015;
+    public static double kP = 0.002;
     public static double kI = 0.0001;
     public static double kD = 0.0000;
 
@@ -43,13 +43,13 @@ public class Launcher {
     // More than BRAKE_OVER_RPM above target -> BRAKE_POWER. Closer than that the PID handles it
     // (it can lower power to 0, but never reverses).
     public static double BRAKE_OVER_RPM = 170;
-    public static double BRAKE_POWER = -0.2;
+    public static double BRAKE_POWER = -0.1;
 
     // Bang-bang: more than BANG_BANG_RPM below target -> full power (fast spin-up and
     // recovery after a shot). Closer than that, feedforward + PID take over.
     // Keep it at or below I_ZONE_RPM so the integral is already working at the hand-off.
     public static boolean BANG_BANG = true;
-    public static double BANG_BANG_RPM = 100;
+    public static double BANG_BANG_RPM = 130;
     public static double BANG_BANG_POWER = 1.0;
 
     private final DcMotorEx motor;

@@ -154,6 +154,7 @@ public class ShooterTuneTele extends CommandOpMode {
     /** All per-loop subsystem updates, run directly (no scheduler/commands), same as Tele.update(). */
     private void update() {
         r.p.setPos(hood);
+
         r.l.updateshooting(flywheelOn ? targetRpm : 0);
         aimTurret();
         r.t.tester();

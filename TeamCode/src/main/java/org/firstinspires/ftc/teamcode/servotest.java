@@ -18,7 +18,7 @@ public class servotest extends LinearOpMode {
     @Override
     public void runOpMode() {
 
-        hoodp = hardwareMap.get(Servo.class, "hoodp");
+        hoodp = hardwareMap.get(Servo.class, "gatep");
 
         FtcDashboard dashboard = FtcDashboard.getInstance();
 

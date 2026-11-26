@@ -20,7 +20,7 @@ public class Transfer {
 
     // Shooting velocity PID (ticks/s). Only active between shoot() and the next set()/spin*().
     public static double kP = 0.0008, kI = 0, kD = 0.00002, kF = 0.0004;
-    public static double targetVelocity = 1700;     // ticks/s while shooting
+    public static double targetVelocity = 2100;     // ticks/s while shooting
     public static double maxIntegral = 0.3;         // clamp on the I term (power units)
     public static double minPower = 0, maxPower = 1;
     public static boolean encoderReversed = false;

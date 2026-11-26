@@ -52,6 +52,7 @@ public class Tele extends CommandOpMode {
     public static double TURRET_OFFSET_X = -2.6, TURRET_OFFSET_Y = 0;
 
     boolean flowerDown = false;
+    boolean lastFlowerBtn = false;
     /** Field y (in) where the goal auto-switches between audience and rear. Tunable on the dashboard. */
     public static double FAR_Y = 72;
     /** When true the goal switches by itself as the robot crosses FAR_Y (B still toggles, until the next crossing). */
@@ -129,12 +130,24 @@ public class Tele extends CommandOpMode {
 
             follower.setPose(alliance == Alliance.RED ? ShootingCalc.RED_START : ShootingCalc.BLUE_START);
         }
+        if (gamepad1.dpadUpWasPressed()) {
+
+            follower.setPose(alliance == Alliance.RED ? ShootingCalc.RED_START_new : ShootingCalc.BLUE_START_new);
+        }
         if (gamepad1.right_trigger > 0.2)
             Scheduler.schedule(launch());
 
-        // Intake runs while the bumper is held OR while a shot is feeding.
+        // D-pad up toggles the flower between DOWN and UP.
+        // Edge detection: toggles once per press, not every loop while held.
+        boolean flowerBtn = gamepad1.left_trigger_pressed;
+        if (flowerBtn && !lastFlowerBtn) {
+            r.f.setMode(r.f.getMode() == Flower.Mode.DOWN ? Flower.Mode.UP : Flower.Mode.DOWN);
+        }
+        lastFlowerBtn = flowerBtn;
+
+        // Intake runs while right bumper is held (left bumper = reverse) OR while a shot is feeding.
         // Set directly every loop, so shooting can never block or override it.
-        is.set(feeding ? 2 : gamepad1.right_bumper ? 1 : 0);
+        is.set(feeding ? 2 : gamepad1.right_bumper ? 1 : gamepad1.left_bumper ? 4 : 0);
 
         if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
             onGoalSwitched();
@@ -317,8 +330,8 @@ public class Tele extends CommandOpMode {
     // Extra turret angle when the robot is far to one side of the goal (along field x).
     // If it makes shots miss MORE on a side, flip that side's sign.
     public static double SIDE_X_THRESHOLD = 15;
-    public static double LEFT_SIDE_OFFSET_DEG = -1;   // robot x < goal x - threshold
-    public static double RIGHT_SIDE_OFFSET_DEG = 1; // robot x > goal x + threshold
+    public static double LEFT_SIDE_OFFSET_DEG = 0;   // robot x < goal x - threshold
+    public static double RIGHT_SIDE_OFFSET_DEG =0; // robot x > goal x + threshold
 
     /** The side correction currently being added to the turret angle, in degrees. */
     double sideOffsetDeg() {

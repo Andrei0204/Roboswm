@@ -51,7 +51,7 @@ public class IntakeSystem {
         this.intakestate = intakestate;
         if (intakestate == 0) apply(0, 0, Tavalug.Mode.UP);
         else if (intakestate == 1 || intakestate == 3) apply(1, 1, Tavalug.Mode.COLLECT_FLOARE);
-        else if (intakestate == 2) applyShoot(0.6, Tavalug.Mode.INIT);
+        else if (intakestate == 2) apply(0.7,0.75, Tavalug.Mode.INIT);
         else if (intakestate == 4) apply(Intake.out, 0, Tavalug.Mode.COLLECT_FLOARE);
     }
 

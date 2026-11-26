@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 
-import static com.pedropathing.ivy.commands.Commands.infinite;
 import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.groups.Groups.sequential;
@@ -9,6 +8,7 @@ import static com.pedropathing.ivy.groups.Groups.sequential;
 import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.ivy.Command;
+import com.pedropathing.ivy.CommandBuilder;
 import com.pedropathing.ivy.behaviors.ConflictBehavior;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -68,32 +68,65 @@ public class Auto extends CommandOpMode {
         telemetry.addData("distanta",distance);
         telemetry.update();
     }
+    /** Set by enable() at start(); until then update() only tracks the pose (init_loop). */
+    private boolean enabled = false;
+    /** True while a shot is feeding balls; forces the intake to shoot mode (same as Tele). */
+    boolean feeding = false;
+    /** Intake mode the routine asked for; applied every loop unless a shot is feeding. */
+    private double desiredIntake = 0;
+
+    public void enable() {
+        enabled = true;
+    }
+
+    /**
+     * Call every loop. Runs all subsystem updates directly (no scheduler), same order as Tele.update().
+     */
     public void update(Pose pose){
         is.updatePid();
         if (pose == null) return;
         robopose=pose;
         turpose = getTurretPose(pose);
+        if (!enabled) return;
+
+        r.p.setPos(anglepivot);
+        shootcalc();
+        r.l.updateshooting(flywheelspeed);
+        turret();
+        r.t.tester();
+        r.l.tester();
+        r.p.tester();
+        r.bs.update();
+        // Intake is set directly every loop, so shooting can never block or override it.
+        is.set(feeding ? 2 : desiredIntake);
+    }
+
+    /** Selects the intake mode (0 off, 1 intake, 2 shoot, ...); applied by update() every loop. */
+    public CommandBuilder intake(double mode) {
+        return sequential(instant(() -> desiredIntake = mode));
     }
     public void changegoal(){
         Goal=ShootingCalc.other(alliance,Goal);
     }
 
+    /** Same shooting sequence as Tele: open gate, feed continuously for Tele.LAUNCH_MS, close. */
     public Command launch() {
         return sequential(
                 r.g.setcom(Gate.Mode.OPEN),
-                is.run(1),
-                waitMs(40),
-                is.run(2),
-                waitMs(500),
+                waitMs(70),
+                instant(() -> feeding = true),
+                waitMs(20),
+                is.setIn(1),
+                waitMs(Tele.LAUNCH_MS),
                 r.g.setcom(Gate.Mode.CLOSE),
-                is.run(0)
+                instant(() -> feeding = false)
         )
-                .requiring(is)
+                .requiring(r.g)
                 .setPriority(10)
                 .setConflictBehavior(ConflictBehavior.CANCEL);
     }
     /**
-     * Sets the flywheel RPM and hood angle by hand and turns the ShotTable lookup OFF,
+     * Sets the flywheel RPM and hood angle by hand and turns the SpdhotTable lookup OFF,
      * so shootcalc() stops overwriting them. Use useTableShot() to go back to the table.
      * Example: auto.setShot(2450, 0.27)
      */
@@ -110,12 +143,6 @@ public class Auto extends CommandOpMode {
         return instant(() -> useShotTable = true);
     }
 
-    public Command updatespeed() {
-        return
-                infinite(() ->
-                        r.l.updateshooting(flywheelspeed)
-                );
-    }
     /**
      * Toggles turret hold. When turned on, goal-tracking is ignored and the turret is held at
      * turretHoldAngle (degrees, robot frame). If useCurrentAngleForHold is true, the angle the
@@ -138,19 +165,6 @@ public class Auto extends CommandOpMode {
             turretHold = !turretHold;
             if (turretHold) turretHoldAngle = angleDeg;
         });
-    }
-
-    public Command updateTur() {
-        return
-                infinite(() -> {
-                    if (turretHold) {
-                        r.t.setTargetDegrees(turretHoldAngle);
-                        return;
-                    }
-                    if (robopose == null) return;
-                    turpose = getTurretPose(robopose);
-                    turret();
-                });
     }
 
     public void shootcalc() {

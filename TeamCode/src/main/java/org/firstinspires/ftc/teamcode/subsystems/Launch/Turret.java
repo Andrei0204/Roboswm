@@ -25,12 +25,12 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  */
 @Config
 public class Turret {
-    public static double kP = 0.0035 ;
+    public static double kP = 0.008;
     public static double kI = 0.003;
     public static double kD = 0.00045;
 
     // Smallest power that actually moves the turret. Tune: raise until a 1-2 deg move happens.
-    public static double kS = 0.03;
+    public static double kS =0;
     // Power per deg/s of target motion. Tune while spinning the robot in place with auto-aim on.
     public static double kV = 0.00028;
 

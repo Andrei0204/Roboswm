@@ -36,21 +36,20 @@ public final class ShotTable {
     private static final TreeMap<Double, Shot> TABLE = new TreeMap<>();
 
     static {
-//         //distance (in), rpm, hood servo position
-//        add(31.1, 2378, 0.285);
-//        add(40.7, 2400, 0.274);
-//        add(48.3, 2450,0.264);
 
-        add(56.5, 2460 , 0.49);
-        add(50.3, 2390 , 0.468);
-        add(45, 2350 , 0.478);
-        add(40, 2350 , 0.486);
-        add(34, 2350, 0.5);
 
-//        add(51,2440,0.264);
-//        add(55,2450,0.26);
-
+        add(56.5, 2450         , 0.454);
+        add(50.3, 2400, 0.46);
+        add(45, 2350, 0.48);
+        add(40, 2300, 0.485);
+//        add(34, 2450, 0.49);
     }
+//
+//        add(56.5, 2440 , 0.46);
+//        add(50.3, 2390 , 0.468);
+//        add(45, 2350 , 0.478);
+//        add(40, 2350 , 0.486);
+
 
     /** Adds or replaces a data point. Call from anywhere to tune the table. */
     public static void add(double distance, double rpm, double hood) {
