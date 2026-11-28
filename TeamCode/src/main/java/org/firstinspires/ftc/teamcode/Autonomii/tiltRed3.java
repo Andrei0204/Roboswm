@@ -2,16 +2,12 @@ package org.firstinspires.ftc.teamcode.Autonomii;
 
 import static com.pedropathing.api.Paths.curve;
 import static com.pedropathing.api.Paths.line;
-import static com.pedropathing.ivy.commands.Commands.infinite;
 import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
-import static com.pedropathing.ivy.groups.Groups.deadline;
-import static com.pedropathing.ivy.groups.Groups.parallel;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 import static com.pedropathing.ivy.pedro.PedroCommands.hold;
-import static org.firstinspires.ftc.teamcode.subsystems.Intake.Tavalug.Mode.COLLECT_FLOARE;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
@@ -32,21 +28,31 @@ import org.firstinspires.ftc.teamcode.util.Alliance;
 import org.firstinspires.ftc.teamcode.util.CommandOpMode;
 
 @Autonomous
-public class bagpula2blue extends CommandOpMode {
+public class tiltRed3 extends CommandOpMode {
     Auto auto = null;
     Follower follower;
     private final PoseFactory poseFactory = PoseFactory.degrees();
     // Poses
-    private final Pose startPose = poseFactory.of(85.6, 139.7, 0);
-    private final Pose path1 = poseFactory.of(129, 139.25, 0);
-    private final Pose point2 = poseFactory.of(94, 29, -110);
-    private final Pose point2Control1 = poseFactory.of(119, 56.25, 180);
-    private final Pose point3 = poseFactory.of(94, 21, -90);
-    private final Pose iesitfloare = poseFactory.of(93.8307, 28.0447, -88.6231);
-    private final Pose plecatadoua = poseFactory.of(116.833, 98.1464, 66.3198);
-    private final Pose iafloare = poseFactory.of(125.1705, 97.8972, 0);
-    private final Pose aruncafloare = poseFactory.of(105.0361, 25.3762, 73.0271);
-    private final Pose parck = poseFactory.of(130.311, 52.585, -132.8898);
+    private final Pose startPose = poseFactory.of(58.4, 4.3, 180);
+    private final Pose path1 = poseFactory.of(15, 4.75, 180);
+    private final Pose point2 = poseFactory.of(50, 115, 70);
+    private final Pose point2Control1 = poseFactory.of(25, 87.75, 0);
+    private final Pose point3 = poseFactory.of(50, 123, 90);
+    private final Pose iesitfloare = poseFactory.of(50.1693, 115.9553, 90);
+    private final Pose colectaliat = poseFactory.of(25.7143, 114.9577, 180);
+    private final Pose aruncare2 = poseFactory.of(49.5316, 5.9663, 180);
+    private final Pose dutefloare = poseFactory.of(28.2252, 46.4874, 131.4218);
+
+    private final Pose iafloare222 = poseFactory.of(18.2826, 46.3457, 180);
+
+    private final Pose ultimaaruncare = poseFactory.of(44.5741, 12.1768, 90);
+
+    private final Pose parcare = poseFactory.of(14.6284, 92.2666, 110.0989);
+
+    public Path parcarea() {
+        return Paths.line(ultimaaruncare, parcare).tangent();
+    }
+
 
 
 
@@ -62,28 +68,34 @@ public class bagpula2blue extends CommandOpMode {
         return Paths.line(point2, point3).linear(point2, point3);
     }
 
+
     public Path iesfloare() {
         return Paths.line(point3, iesitfloare).reverseTangent();
     }
-    public Path floareb() {
-        return Paths.line(iesitfloare, plecatadoua).tangent();
-    }
 
-    public Path colectfloare() {
-        return Paths.line(plecatadoua, iafloare).tangent();
-    }
-
-    public Path iesifloare2() {
-        return Paths.line(iafloare, plecatadoua).reverseTangent();
+    public Path colectal() {
+        return Paths.line(iesitfloare, colectaliat).tangent();
     }
 
 
-    public Path salutaruncam() {
-        return Paths.line(iesitfloare, aruncafloare).reverseTangent();
+    public Path aruncaasta() {
+        return Paths.line(colectaliat, aruncare2).linear(colectaliat, aruncare2);
     }
 
-    public Path parcarea() {
-        return Paths.line(point3, parck).reverseTangent();
+    public Path dutefloare2() {
+        return Paths.line(aruncare2, dutefloare).tangent();
+    }
+
+    public Path iafloare() {
+        return Paths.line(dutefloare, iafloare222).tangent();
+    }
+
+    public Path iesifloareul() {
+        return Paths.line(iafloare222, dutefloare).reverseTangent();
+    }
+
+    public Path aruncaulrima() {
+        return Paths.line(dutefloare, ultimaaruncare).linear(iafloare222, ultimaaruncare);
     }
 
     @Override
@@ -95,7 +107,7 @@ public class bagpula2blue extends CommandOpMode {
         follower.localizer.reset();
         follower.update();
         follower.setPose(startPose);
-        auto = new Auto(Alliance.BLUE, hardwareMap);
+        auto = new Auto(Alliance.RED, hardwareMap);
         auto.update(follower.pose());
 
     }
@@ -139,30 +151,38 @@ public class bagpula2blue extends CommandOpMode {
                 follow(follower, path1()),
                 instant(() -> auto.changegoal()),
                 waitMs(200),
-                follow(follower, path2()).with(waitUntil(() -> follower.pose().y() < 124).then(auto.intake(0))),
+                follow(follower, path2()).with(waitUntil(() -> follower.pose().y() > 20).then(auto.intake(0))),
                 waitMs(800),
                 auto.launch(),
                 auto.r.f.setModeC(Flower.Mode.DOWN),
                 auto.intake(1),
                 waitMs(100),
                 follow(follower,path3()),
-                waitMs(1500),
+                waitMs(1000),
                 auto.launch(),
+                instant(() -> auto.changegoal()),
                 follow(follower,iesfloare()),
-                follow(follower, floareb()).with(waitUntil(() -> follower.pose().y() > 44).then( auto.r.f.setModeC(Flower.Mode.UP))),
+                auto.r.f.setModeC(Flower.Mode.UP),
+                auto.intake(1),
+                follow(follower,colectal()),
+                follow(follower,aruncaasta()),
+                waitMs(1000),
+                auto.launch(),
+                follow(follower,dutefloare2()),
                 auto.r.f.setModeC(Flower.Mode.DOWN),
                 auto.intake(1),
-                follow(follower,colectfloare()),
-                waitMs(1500),
-                follow(follower,iesifloare2()),
+                follow(follower,iafloare()),
+                waitMs(1000),
+                follow(follower,iesifloareul()),
                 auto.r.f.setModeC(Flower.Mode.UP),
-                follow(follower,salutaruncam()),
-                waitMs(1600),
+                auto.intake(0),
+                follow(follower,aruncaulrima()),
+                waitMs(600),
                 auto.launch(),
                 instant(() -> auto.changegoal()),
                 follow(follower,parcarea())
-                //               follow(follower,iesfloare()),
-        );
+
+                );
     }
 
 

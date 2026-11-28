@@ -27,7 +27,7 @@ public class Auto extends CommandOpMode {
 
     public static double flywheelspeed = 0, anglepivot = 0.24, anglenorm = 0, anglenou = 1;
     Alliance alliance;
-    Pose Goal;
+    public Pose Goal;
     Pose robopose= null;
     Pose turpose=null;
     public static boolean useShotTable = true;
@@ -51,7 +51,7 @@ public class Auto extends CommandOpMode {
         if (this.alliance == Alliance.RED)
             Goal = ShootingCalc.RED_AUD;
         else
-            Goal = ShootingCalc.BLUE_AUD;
+            Goal = ShootingCalc.BLUE_REAR;
         turretHold = false;
     }
 

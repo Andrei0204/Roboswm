@@ -45,7 +45,7 @@ public class Flower {
     public enum Mode {
         UP(1), //0.7 buna
         /** Collects every ball (POLLEN and NECTAR). */
-        DOWN(0.57); // vedem
+        DOWN(0.65); // vedem
 
 
 

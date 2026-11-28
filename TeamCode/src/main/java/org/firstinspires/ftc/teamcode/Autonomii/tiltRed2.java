@@ -2,16 +2,12 @@ package org.firstinspires.ftc.teamcode.Autonomii;
 
 import static com.pedropathing.api.Paths.curve;
 import static com.pedropathing.api.Paths.line;
-import static com.pedropathing.ivy.commands.Commands.infinite;
 import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
-import static com.pedropathing.ivy.groups.Groups.deadline;
-import static com.pedropathing.ivy.groups.Groups.parallel;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 import static com.pedropathing.ivy.pedro.PedroCommands.hold;
-import static org.firstinspires.ftc.teamcode.subsystems.Intake.Tavalug.Mode.COLLECT_FLOARE;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
@@ -32,7 +28,7 @@ import org.firstinspires.ftc.teamcode.util.Alliance;
 import org.firstinspires.ftc.teamcode.util.CommandOpMode;
 
 @Autonomous
-public class bagpula2 extends CommandOpMode {
+public class tiltRed2 extends CommandOpMode {
     Auto auto = null;
     Follower follower;
     private final PoseFactory poseFactory = PoseFactory.degrees();
@@ -43,12 +39,12 @@ public class bagpula2 extends CommandOpMode {
     private final Pose point2Control1 = poseFactory.of(25, 87.75, 0);
     private final Pose point3 = poseFactory.of(50, 123, 90);
      private final Pose iesitfloare = poseFactory.of(50.1693, 115.9553, 91.3769);
-    private final Pose plecatadoua = poseFactory.of(27.167, 45.8536, -113.6802);
-    private final Pose iafloare = poseFactory.of(18.8295, 44.1028, 180);
+    private final Pose plecatadoua = poseFactory.of(27.167, 50, -113.6802);
+    private final Pose iafloare = poseFactory.of(18, 44.1028, 180);
 
-    private final Pose aruncafloare = poseFactory.of(38.9639, 118.6238, -106.9729);
+    private final Pose aruncafloare = poseFactory.of(44, 118.6238, -106.9729);
 
-    private final Pose parck = poseFactory.of(13.689, 91.415, 47.1102);
+    private final Pose parck = poseFactory.of(18, 91.415, 47.1102);
 
 
 
@@ -72,7 +68,7 @@ public class bagpula2 extends CommandOpMode {
     }
 
     public Path colectfloare() {
-        return Paths.line(plecatadoua, iafloare).tangent();
+        return Paths.line(plecatadoua, iafloare).linear(plecatadoua,iafloare,0.5);
     }
 
     public Path iesifloare2() {
@@ -80,7 +76,9 @@ public class bagpula2 extends CommandOpMode {
     }
 
 
-    public Path salutaruncam() {
+    public Path salutaruncam()
+
+    {
         return Paths.line(iesitfloare, aruncafloare).reverseTangent();
     }
 
@@ -135,7 +133,7 @@ public class bagpula2 extends CommandOpMode {
 
     private Command autoroutine() {
         return sequential(
-                waitMs(1800),
+                waitMs(2200),
                 auto.launch(),
                 auto.intake(1),
                 follow(follower, path1()),
@@ -156,6 +154,7 @@ public class bagpula2 extends CommandOpMode {
                 auto.intake(1),
                 follow(follower,colectfloare()),
                 waitMs(1500),
+                auto.intake(0),
                 follow(follower,iesifloare2()),
                 auto.r.f.setModeC(Flower.Mode.UP),
                 follow(follower,salutaruncam()),

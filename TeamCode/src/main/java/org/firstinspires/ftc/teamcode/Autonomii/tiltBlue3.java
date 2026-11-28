@@ -28,26 +28,26 @@ import org.firstinspires.ftc.teamcode.util.Alliance;
 import org.firstinspires.ftc.teamcode.util.CommandOpMode;
 
 @Autonomous
-public class bagpula3tilturi extends CommandOpMode {
+public class tiltBlue3 extends CommandOpMode {
     Auto auto = null;
     Follower follower;
     private final PoseFactory poseFactory = PoseFactory.degrees();
     // Poses
-    private final Pose startPose = poseFactory.of(58.4, 4.3, 180);
-    private final Pose path1 = poseFactory.of(15, 4.75, 180);
-    private final Pose point2 = poseFactory.of(50, 115, 70);
-    private final Pose point2Control1 = poseFactory.of(25, 87.75, 0);
-    private final Pose point3 = poseFactory.of(50, 123, 90);
-    private final Pose iesitfloare = poseFactory.of(50.1693, 115.9553, 90);
-    private final Pose colectaliat = poseFactory.of(25.7143, 114.9577, 180);
-    private final Pose aruncare2 = poseFactory.of(49.5316, 5.9663, 180);
-    private final Pose dutefloare = poseFactory.of(28.2252, 46.4874, 131.4218);
+    private final Pose startPose = poseFactory.of(85.6, 139.7, 0);
+    private final Pose path1 = poseFactory.of(129, 139.25, 0);
+    private final Pose point2 = poseFactory.of(94, 29, -110);
+    private final Pose point2Control1 = poseFactory.of(119, 56.25, 180);
+    private final Pose point3 = poseFactory.of(94, 21, -90);
+    private final Pose iesitfloare = poseFactory.of(93.8307, 28.0447, -90);
+    private final Pose colectaliat = poseFactory.of(118.2857, 29.0423, 0);
+    private final Pose aruncare2 = poseFactory.of(94.4684, 138.0337, 0);
+    private final Pose dutefloare = poseFactory.of(115.7748, 97.5126, -48.5782);
 
-    private final Pose iafloare222 = poseFactory.of(18.2826, 46.3457, 180);
+    private final Pose iafloare222 = poseFactory.of(123.7174, 97.6543, 0);
 
-    private final Pose ultimaaruncare = poseFactory.of(44.5741, 12.1768, 90);
+    private final Pose ultimaaruncare = poseFactory.of(99.4259, 131.8232, -90);
 
-    private final Pose parcare = poseFactory.of(14.6284, 92.2666, 110.0989);
+    private final Pose parcare = poseFactory.of(129.3716, 51.7334, -69.9011);
 
     public Path parcarea() {
         return Paths.line(ultimaaruncare, parcare).tangent();
@@ -107,7 +107,7 @@ public class bagpula3tilturi extends CommandOpMode {
         follower.localizer.reset();
         follower.update();
         follower.setPose(startPose);
-        auto = new Auto(Alliance.RED, hardwareMap);
+        auto = new Auto(Alliance.BLUE, hardwareMap);
         auto.update(follower.pose());
 
     }
@@ -151,7 +151,7 @@ public class bagpula3tilturi extends CommandOpMode {
                 follow(follower, path1()),
                 instant(() -> auto.changegoal()),
                 waitMs(200),
-                follow(follower, path2()).with(waitUntil(() -> follower.pose().y() > 20).then(auto.intake(0))),
+                follow(follower, path2()).with(waitUntil(() -> follower.pose().y() < 124).then(auto.intake(0))),
                 waitMs(800),
                 auto.launch(),
                 auto.r.f.setModeC(Flower.Mode.DOWN),
@@ -182,7 +182,7 @@ public class bagpula3tilturi extends CommandOpMode {
                 instant(() -> auto.changegoal()),
                 follow(follower,parcarea())
 
-                );
+        );
     }
 
 

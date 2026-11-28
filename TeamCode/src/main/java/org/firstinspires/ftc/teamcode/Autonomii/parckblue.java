@@ -80,7 +80,6 @@ public class parckblue extends CommandOpMode {
     public void stop() {
         OpModeStorage.autonomousEndPose = follower.pose(); //saves your position in that file
     }
-
     private Command autoroutine() {
         return sequential(
                 follow(follower, path1())
